@@ -1,5 +1,5 @@
 {
-  "name": "ezphp/validation",
+  "name": "ez-php/validation",
   "description": "Validation module for the ez-php framework — rule-based validator with database-backed unique/exists rules and optional i18n support",
   "type": "library",
   "license": "MIT",
@@ -17,10 +17,10 @@
   },
   "require": {
     "php": "^8.5",
-    "ezphp/framework": "^1.0"
+    "ez-php/framework": "^1.0"
   },
   "suggest": {
-    "ezphp/i18n": "Enables localised validation error messages"
+    "ez-php/i18n": "Enables localised validation error messages"
   },
   "require-dev": {
     "phpunit/phpunit": "^13.0",
@@ -28,7 +28,7 @@
     "friendsofphp/php-cs-fixer": "^3.94",
     "phpstan/phpstan-strict-rules": "^2.0",
     "phpstan/phpstan-deprecation-rules": "^2.0",
-    "ezphp/i18n": "^1.0"
+    "ez-php/i18n": "^1.0"
   },
   "autoload": {
     "psr-4": {
