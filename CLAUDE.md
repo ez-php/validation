@@ -86,7 +86,7 @@ When creating a new module or `CLAUDE.md` anywhere in this repository:
 
 **CLAUDE.md structure:**
 - Start with the full content of `CODING_GUIDELINES.md`, verbatim
-- Then add `---` followed by `# Package: ezphp/<name>` (or `# Directory: <name>`)
+- Then add `---` followed by `# Package: ez-php/<name>` (or `# Directory: <name>`)
 - Module-specific section must cover:
   - Source structure (file tree with one-line descriptions per file)
   - Key classes and their responsibilities
@@ -100,7 +100,7 @@ When creating a new module or `CLAUDE.md` anywhere in this repository:
 **Docker setup:** copy `docker-compose.yml`, `docker/`, `.env.example` and `start.sh` from the repository root and adapt them for the module (service names, ports, required services). Use a unique `DB_PORT` in `.env.example` that is not used by any other package — increment by one per package starting with `3306` (root).
 ---
 
-# Package: ezphp/validation
+# Package: ez-php/validation
 
 Rule-based input validation with optional database checks and i18n error messages.
 
@@ -204,15 +204,15 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **`unique`/`exists` use raw SQL with backtick-quoted identifiers** — Table and column names come from the application's rule definitions, not from user input. If user-controlled values were ever used as table/column names, this would be a SQL injection risk. They must always be hardcoded in application code.
 - **`min`/`max` are type-aware** — String values use `mb_strlen` (multibyte safe); numeric values compare as `float`. A value that is both a string and numeric (e.g. `"42"`) will be treated as numeric by `is_numeric()`.
 - **Unknown rules are silently ignored** — The `match` in `applyRule()` has a `default => null` branch. This prevents exceptions on typos in rule names but also means misspelled rules produce no errors and no warnings. Be precise when writing rules.
-- **Error messages use `:placeholder` syntax** — Consistent with the `ezphp/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
-- **`ValidationException` extends `EzPhpException`** — This ties the package to `ezphp/framework`. If standalone use is needed in the future, this dependency should be reconsidered.
+- **Error messages use `:placeholder` syntax** — Consistent with the `ez-php/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
+- **`ValidationException` extends `EzPhpException`** — This ties the package to `ez-php/framework`. If standalone use is needed in the future, this dependency should be reconsidered.
 
 ---
 
 ## Testing Approach
 
 - **No external infrastructure for most rules** — `required`, `string`, `integer`, `email`, `min`, `max`, `regex` are fully testable in-process with no DB or translator.
-- **DB rules require a live database** — `unique` and `exists` tests must use a real `Database` instance (via `DatabaseTestCase` from `ezphp/framework` tests, or a test-specific SQLite database). Do not mock the database for these rules.
+- **DB rules require a live database** — `unique` and `exists` tests must use a real `Database` instance (via `DatabaseTestCase` from `ez-php/framework` tests, or a test-specific SQLite database). Do not mock the database for these rules.
 - **Translator tests** — Pass an inline anonymous-class `Translator` or a real `Translator` pointing at a `sys_get_temp_dir()` lang directory. Assert that error messages reflect the translated strings.
 - **Test absent-value skip behaviour** — Confirm that type rules (`string`, `email`, etc.) produce no errors when the field is absent or empty, and that `required` does.
 - **Test `validate()` throws** — Assert `ValidationException` is thrown, and that `$e->errors()` contains the expected field → messages structure.

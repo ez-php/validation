@@ -9,11 +9,11 @@
       "email": "andreas.uretschnig@gmail.com"
     }
   ],
-  "keywords": ["validation", "validator", "php", "framework", "ezphp"],
-  "homepage": "https://github.com/ezphp/validation",
+  "keywords": ["validation", "validator", "php", "framework", "ez-php"],
+  "homepage": "https://github.com/ez-php/validation",
   "support": {
-    "issues": "https://github.com/ezphp/validation/issues",
-    "source": "https://github.com/ezphp/validation"
+    "issues": "https://github.com/ez-php/validation/issues",
+    "source": "https://github.com/ez-php/validation"
   },
   "require": {
     "php": "^8.5",

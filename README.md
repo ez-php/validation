@@ -1,24 +1,24 @@
-# ezphp/validation
+# ez-php/validation
 
-Validation module for the [ez-php framework](https://github.com/ezphp/framework) — rule-based validator with database-backed `unique`/`exists` rules and optional i18n support.
+Validation module for the [ez-php framework](https://github.com/ez-php/framework) — rule-based validator with database-backed `unique`/`exists` rules and optional i18n support.
 
-[![CI](https://github.com/ezphp/validation/actions/workflows/ci.yml/badge.svg)](https://github.com/ezphp/validation/actions/workflows/ci.yml)
+[![CI](https://github.com/ez-php/validation/actions/workflows/ci.yml/badge.svg)](https://github.com/ez-php/validation/actions/workflows/ci.yml)
 
 ## Requirements
 
 - PHP 8.5+
-- ezphp/framework ^1.0
+- ez-php/framework ^1.0
 
 ## Installation
 
 ```bash
-composer require ezphp/validation
+composer require ez-php/validation
 ```
 
-Optionally install [ezphp/i18n](https://github.com/ezphp/i18n) for localised error messages:
+Optionally install [ez-php/i18n](https://github.com/ez-php/i18n) for localised error messages:
 
 ```bash
-composer require ezphp/i18n
+composer require ez-php/i18n
 ```
 
 ## Usage
