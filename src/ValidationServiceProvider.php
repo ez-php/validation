@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace EzPhp\Validation;
 
-use EzPhp\ServiceProvider\ServiceProvider;
+use EzPhp\Contracts\ServiceProvider;
 
 /**
  * Class ValidationServiceProvider

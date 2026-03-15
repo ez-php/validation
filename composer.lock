@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2d9198b8d24341157b262aebfd99f989",
+    "content-hash": "084a7bc75a727891ab565c2544043e4e",
     "packages": [
         {
             "name": "ez-php/console",
@@ -60,6 +60,64 @@
                 "source": "https://github.com/ez-php/console"
             },
             "time": "2026-03-15T03:47:51+00:00"
+        },
+        {
+            "name": "ez-php/contracts",
+            "version": "0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ez-php/contracts.git",
+                "reference": "07fe3547986e68a9d6dccf38fb11efadf6786821"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ez-php/contracts/zipball/07fe3547986e68a9d6dccf38fb11efadf6786821",
+                "reference": "07fe3547986e68a9d6dccf38fb11efadf6786821",
+                "shasum": ""
+            },
+            "require": {
+                "ext-pdo": "*",
+                "ez-php/http": "0.*",
+                "php": "^8.5"
+            },
+            "require-dev": {
+                "ez-php/docker": "0.*",
+                "friendsofphp/php-cs-fixer": "^3.94",
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^13.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "EzPhp\\Contracts\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Andreas Uretschnig",
+                    "email": "andreas.uretschnig@gmail.com"
+                }
+            ],
+            "description": "Shared interfaces and abstract base classes for the ez-php framework — zero framework coupling for standalone modules",
+            "homepage": "https://github.com/ez-php/contracts",
+            "keywords": [
+                "contracts",
+                "dependency-injection",
+                "ez-php",
+                "interfaces",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/ez-php/contracts/issues",
+                "source": "https://github.com/ez-php/contracts"
+            },
+            "time": "2026-03-15T22:05:55+00:00"
         },
         {
             "name": "ez-php/dotenv",
@@ -626,16 +684,16 @@
         },
         {
             "name": "ez-php/docker",
-            "version": "0.2.0",
+            "version": "0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ez-php/docker.git",
-                "reference": "b7c10d44fbaf9bc2d371cd3077b9e6a4840310fb"
+                "reference": "0e77a45518ef5b35811e3a2e0454ade0681c5282"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ez-php/docker/zipball/b7c10d44fbaf9bc2d371cd3077b9e6a4840310fb",
-                "reference": "b7c10d44fbaf9bc2d371cd3077b9e6a4840310fb",
+                "url": "https://api.github.com/repos/ez-php/docker/zipball/0e77a45518ef5b35811e3a2e0454ade0681c5282",
+                "reference": "0e77a45518ef5b35811e3a2e0454ade0681c5282",
                 "shasum": ""
             },
             "require": {
@@ -652,9 +710,9 @@
             "description": "Docker base image source and scaffolding stubs for ez-php modules and projects",
             "support": {
                 "issues": "https://github.com/ez-php/docker/issues",
-                "source": "https://github.com/ez-php/docker/tree/v0.2.0"
+                "source": "https://github.com/ez-php/docker/tree/v0.2.1"
             },
-            "time": "2026-03-15T17:15:35+00:00"
+            "time": "2026-03-15T22:10:11+00:00"
         },
         {
             "name": "fidry/cpu-core-counter",

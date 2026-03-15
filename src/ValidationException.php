@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace EzPhp\Validation;
 
-use EzPhp\Exceptions\EzPhpException;
+use EzPhp\Contracts\EzPhpException;
 
 /**
  * Class ValidationException

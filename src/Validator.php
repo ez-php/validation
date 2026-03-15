@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace EzPhp\Validation;
 
-use EzPhp\Database\Database;
+use EzPhp\Contracts\DatabaseInterface;
 use EzPhp\I18n\Translator;
 use RuntimeException;
 
@@ -42,7 +42,7 @@ final class Validator
     private function __construct(
         private readonly array $data,
         private readonly array $rules,
-        private readonly ?Database $db,
+        private readonly ?DatabaseInterface $db,
         private readonly Translator $translator,
     ) {
     }
@@ -54,7 +54,7 @@ final class Validator
     public static function make(
         array $data,
         array $rules,
-        ?Database $db = null,
+        ?DatabaseInterface $db = null,
         ?Translator $translator = null,
     ): self {
         $translator ??= new Translator('en', 'en', __DIR__ . '/../lang');
