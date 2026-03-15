@@ -19,7 +19,6 @@ use Tests\TestCase;
  */
 #[CoversClass(Validator::class)]
 #[UsesClass(ValidationException::class)]
-#[UsesClass(Translator::class)]
 final class ValidatorTest extends TestCase
 {
     // --- required ---

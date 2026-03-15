@@ -42,8 +42,8 @@ final class Validator
     private function __construct(
         private readonly array $data,
         private readonly array $rules,
-        private readonly ?Database $db = null,
-        private readonly ?Translator $translator = null,
+        private readonly ?Database $db,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -57,6 +57,8 @@ final class Validator
         ?Database $db = null,
         ?Translator $translator = null,
     ): self {
+        $translator ??= new Translator('en', 'en', __DIR__ . '/../lang');
+
         return new self($data, $rules, $db, $translator);
     }
 
@@ -164,39 +166,7 @@ final class Validator
      */
     private function translate(string $key, array $replacements): string
     {
-        if ($this->translator !== null) {
-            return $this->translator->get("validation.$key", $replacements);
-        }
-
-        return $this->fallbackMessage($key, $replacements);
-    }
-
-    /**
-     * @param array<string, string|int|float> $replacements
-     */
-    private function fallbackMessage(string $key, array $replacements): string
-    {
-        $templates = [
-            'required' => 'The :field field is required.',
-            'string' => 'The :field field must be a string.',
-            'integer' => 'The :field field must be an integer.',
-            'email' => 'The :field field must be a valid email address.',
-            'regex' => 'The :field field format is invalid.',
-            'unique' => 'The :field has already been taken.',
-            'exists' => 'The selected :field is invalid.',
-            'min.string' => 'The :field field must be at least :min characters.',
-            'min.numeric' => 'The :field field must be at least :min.',
-            'max.string' => 'The :field field must not exceed :max characters.',
-            'max.numeric' => 'The :field field must not exceed :max.',
-        ];
-
-        $template = $templates[$key] ?? $key;
-
-        foreach ($replacements as $placeholder => $value) {
-            $template = str_replace(":$placeholder", (string) $value, $template);
-        }
-
-        return $template;
+        return $this->translator->get("validation.$key", $replacements);
     }
 
     /**
