@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace EzPhp\Validation;
 
 use EzPhp\Contracts\DatabaseInterface;
-use EzPhp\I18n\Translator;
+use EzPhp\Contracts\TranslatorInterface;
 use RuntimeException;
 
 /**
@@ -43,7 +43,7 @@ final class Validator
         private readonly array $data,
         private readonly array $rules,
         private readonly ?DatabaseInterface $db,
-        private readonly Translator $translator,
+        private readonly ?TranslatorInterface $translator,
     ) {
     }
 
@@ -55,10 +55,8 @@ final class Validator
         array $data,
         array $rules,
         ?DatabaseInterface $db = null,
-        ?Translator $translator = null,
+        ?TranslatorInterface $translator = null,
     ): self {
-        $translator ??= new Translator('en', 'en', __DIR__ . '/../lang');
-
         return new self($data, $rules, $db, $translator);
     }
 
@@ -166,7 +164,41 @@ final class Validator
      */
     private function translate(string $key, array $replacements): string
     {
-        return $this->translator->get("validation.$key", $replacements);
+        if ($this->translator !== null) {
+            return $this->translator->get("validation.$key", $replacements);
+        }
+
+        return $this->fallbackMessage($key, $replacements);
+    }
+
+    /**
+     * English fallback messages used when no Translator is provided.
+     *
+     * @param array<string, string|int|float> $replacements
+     */
+    private function fallbackMessage(string $key, array $replacements): string
+    {
+        $templates = [
+            'required' => 'The :field field is required.',
+            'string' => 'The :field field must be a string.',
+            'integer' => 'The :field field must be an integer.',
+            'email' => 'The :field field must be a valid email address.',
+            'regex' => 'The :field field format is invalid.',
+            'unique' => 'The :field has already been taken.',
+            'exists' => 'The selected :field is invalid.',
+            'min.string' => 'The :field field must be at least :min characters.',
+            'min.numeric' => 'The :field field must be at least :min.',
+            'max.string' => 'The :field field must not exceed :max characters.',
+            'max.numeric' => 'The :field field must not exceed :max.',
+        ];
+
+        $template = $templates[$key] ?? $key;
+
+        foreach ($replacements as $placeholder => $value) {
+            $template = str_replace(":$placeholder", (string) $value, $template);
+        }
+
+        return $template;
     }
 
     /**
