@@ -144,7 +144,7 @@ final class Validator
             'regex' => $this->checkRegex($field, $value, $param ?? ''),
             'unique' => $this->checkUnique($field, $value, $param ?? ''),
             'exists' => $this->checkExists($field, $value, $param ?? ''),
-            default => null,
+            default => throw new RuntimeException("Unknown validation rule '$name' on field '$field'."),
         };
     }
 

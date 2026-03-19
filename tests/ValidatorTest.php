@@ -361,15 +361,16 @@ final class ValidatorTest extends TestCase
         $this->assertTrue($v->passes());
     }
 
-    // --- unknown rule is silently ignored ---
+    // --- unknown rule throws RuntimeException ---
 
     /**
      * @return void
      */
-    public function testUnknownRuleIsIgnored(): void
+    public function testUnknownRuleThrowsRuntimeException(): void
     {
-        $v = Validator::make(['x' => 'hello'], ['x' => 'unknown_rule']);
-        $this->assertTrue($v->passes());
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/unknown_rule/');
+        Validator::make(['x' => 'hello'], ['x' => 'unknown_rule'])->fails();
     }
 
     // --- result is cached (run() idempotent) ---
