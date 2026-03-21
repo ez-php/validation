@@ -32,6 +32,7 @@ final class ValidationServiceProviderTest extends ApplicationTestCase
 
     /**
      * @return void
+     * @throws \ReflectionException
      */
     public function test_validator_is_bound_in_container(): void
     {
@@ -40,6 +41,7 @@ final class ValidationServiceProviderTest extends ApplicationTestCase
 
     /**
      * @return void
+     * @throws \ReflectionException
      */
     public function test_validator_resolves_as_singleton(): void
     {
