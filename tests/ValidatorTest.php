@@ -128,6 +128,39 @@ final class ValidatorTest extends TestCase
         $this->assertTrue($v->fails());
     }
 
+    /**
+     * '0' is a valid integer string: FILTER_VALIDATE_INT returns 0, which !== false.
+     *
+     * @return void
+     */
+    public function testIntegerPassesForStringZero(): void
+    {
+        $v = Validator::make(['count' => '0'], ['count' => 'integer']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * Negative integer strings are accepted.
+     *
+     * @return void
+     */
+    public function testIntegerPassesForNegativeString(): void
+    {
+        $v = Validator::make(['offset' => '-5'], ['offset' => 'integer']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * Whitespace-only strings fail FILTER_VALIDATE_INT and are treated as invalid integers.
+     *
+     * @return void
+     */
+    public function testIntegerFailsForWhitespaceOnlyString(): void
+    {
+        $v = Validator::make(['age' => '   '], ['age' => 'integer']);
+        $this->assertTrue($v->fails());
+    }
+
     // --- email ---
 
     /**
@@ -265,11 +298,12 @@ final class ValidatorTest extends TestCase
     /**
      * @return void
      */
-    public function testInvalidRegexPatternAddsError(): void
+    public function testInvalidRegexPatternThrowsRuntimeException(): void
     {
-        // An invalid regex should treat the field as invalid
+        // An invalid regex is a programming error — throws instead of adding a validation error
+        $this->expectException(RuntimeException::class);
         $v = Validator::make(['code' => 'abc'], ['code' => 'regex:not_a_valid_regex']);
-        $this->assertTrue($v->fails());
+        $v->fails();
     }
 
     // --- pipe-separated rules ---

@@ -155,6 +155,8 @@ Rule-based input validation with optional database checks and i18n error message
 src/
 ├── Validator.php                — Rule-based validator; lazy execution; optional DB and Translator
 ├── RuleInterface.php            — Interface for custom rule objects
+├── ConditionalRule.php          — Value object for Rule::when(); holds condition + nested rules
+├── Rule.php                     — Static factory: Rule::when($condition, $rules)
 ├── ValidationException.php     — Thrown by validate(); carries field → messages error map
 └── ValidationServiceProvider.php — Binds a no-op Validator placeholder to the container
 
@@ -162,6 +164,7 @@ tests/
 ├── TestCase.php                        — Base PHPUnit test case
 ├── ValidatorTest.php                   — Covers all built-in rules, fails/passes/errors/validate, DB rules, translator
 ├── CustomRuleTest.php                  — Covers RuleInterface integration (pass, fail, placeholder, mixed rules)
+├── ConditionalRuleTest.php             — Covers 'sometimes' modifier and Rule::when() (bool + closure conditions)
 └── ValidationExceptionTest.php         — Covers exception construction and errors() accessor
 ```
 
@@ -179,14 +182,16 @@ $v = Validator::make($data, $rules, db: $db);
 $v = Validator::make($data, $rules, db: $db, translator: $translator);
 ```
 
-**Rules** are passed as `array<string, string|list<string|RuleInterface>>`. The pipe-separated string form is equivalent to an array of strings. Custom rule objects can only be used in the array form:
+**Rules** are passed as `array<string, string|list<string|RuleInterface|ConditionalRule>>`. The pipe-separated string form is equivalent to an array of strings. Custom rule objects and conditional rules can only be used in the array form:
 
 ```php
 // string form (built-in rules only):
 ['email' => 'required|email', 'age' => 'integer|min:18']
 
-// array form (built-in rules and/or custom rule objects):
+// array form (built-in rules, custom objects, conditional rules):
 ['email' => ['required', 'email'], 'code' => ['required', new Uppercase()]]
+['name'  => ['sometimes', 'required', 'string']]
+['age'   => ['required', Rule::when($isAdult, ['integer', 'min:18'])]]
 ```
 
 **Supported rules:**
@@ -202,6 +207,7 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `regex` | `regex:/pattern/` | Fails if string doesn't match pattern; skipped if absent or non-string |
 | `unique` | `unique:table` or `unique:table,column` | Fails if value already exists in DB; requires `Database` instance |
 | `exists` | `exists:table` or `exists:table,column` | Fails if value does not exist in DB; requires `Database` instance |
+| `sometimes` | `sometimes` | Field-level modifier: skip all rules for this field if its key is absent from the data array |
 
 **Rule parameter parsing:** `rule:param` splits on the first `:` only, so `regex:/foo:bar/` works correctly.
 
@@ -223,6 +229,32 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 **DB rules (`unique`, `exists`)** — throw `RuntimeException` if called without a `Database` instance. The error is a programming mistake, not a validation failure.
 
 **Custom rules** — any object implementing `RuleInterface` can be passed in the array form. The Validator calls `passes($field, $value)` and, on failure, calls `message()` and replaces `:field` with the field name. Custom rules always run regardless of whether the value is absent or empty — implement that guard inside `passes()` if needed.
+
+---
+
+### Rule (`src/Rule.php`) and ConditionalRule (`src/ConditionalRule.php`)
+
+`Rule` is a static factory for conditional rule sets:
+
+```php
+// Bool condition:
+Rule::when(true, ['required', 'string'])
+Rule::when($isPremium, 'integer|max:50')
+
+// Closure condition (evaluated during validation):
+Rule::when(fn () => $user->isAdmin(), ['required', 'string'])
+```
+
+`Rule::when()` returns a `ConditionalRule` value object. When the Validator encounters one, it calls `isActive()` — if true, each nested rule is dispatched through the same logic as top-level rules (built-in strings, `RuleInterface` objects). If false, the entire nested set is skipped.
+
+**`sometimes` vs `Rule::when()`:**
+
+| Feature | `sometimes` | `Rule::when()` |
+|---|---|---|
+| Scope | Entire field — all rules skipped | Nested rules only |
+| Condition | Key absent from data | Any bool or closure |
+| Position | String in rules array | Object in array |
+| Pipe-string form | ✓ `'sometimes\|required'` | ✗ array only |
 
 ---
 
@@ -278,6 +310,10 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **`unique`/`exists` use raw SQL with backtick-quoted identifiers** — Table and column names come from the application's rule definitions, not from user input. If user-controlled values were ever used as table/column names, this would be a SQL injection risk. They must always be hardcoded in application code.
 - **`min`/`max` are type-aware** — String values use `mb_strlen` (multibyte safe); numeric values compare as `float`. A value that is both a string and numeric (e.g. `"42"`) will be treated as numeric by `is_numeric()`.
 - **Unknown string rules throw `RuntimeException`** — The `match` in `applyRule()` has a `default => throw` branch. Misspelled built-in rule names are caught immediately at runtime.
+- **`sometimes` is a field-level modifier, not a value rule** — It is consumed at the top of the field loop and never reaches `applyRule()`. It is intentionally absent from the `match` statement to keep its semantics distinct.
+- **`sometimes` checks `array_key_exists`, not `isset`** — A field present with a `null` value is treated as present. Only a fully absent key triggers the skip.
+- **`ConditionalRule` does not support `sometimes` internally** — Nesting `sometimes` inside `Rule::when()` has no defined semantics and will be passed to `applyRule()` where it is silently filtered (no-op). Use `sometimes` only at the field level.
+- **`Rule::when()` closures are evaluated during `run()`** — Closures are not called at construction time. This makes them safe to capture runtime state.
 - **Custom `RuleInterface` objects always receive the raw value** — Unlike some built-in rules, custom rules are not skipped for absent/empty values. If a rule should be optional, guard against `null`/`''` inside `passes()`.
 - **Custom rule messages use `:field` replacement** — The same `:placeholder` pattern used by built-in messages. Only `:field` is substituted; custom rules cannot currently use other placeholders (e.g. `:min`). If needed, bake the values into the message string at construction time.
 - **Error messages use `:placeholder` syntax** — Consistent with the `ez-php/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
@@ -293,6 +329,8 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **Test absent-value skip behaviour** — Confirm that type rules (`string`, `email`, etc.) produce no errors when the field is absent or empty, and that `required` does.
 - **Test `validate()` throws** — Assert `ValidationException` is thrown, and that `$e->errors()` contains the expected field → messages structure.
 - **Custom rule tests** — Use inline anonymous classes implementing `RuleInterface`. Test pass, fail, `:field` replacement, combination with built-in rules, and multiple custom rules on the same field.
+- **`sometimes` tests** — Verify the key-absent skip (including when `required` would otherwise fail), key-present normal validation, and the pipe-string form. Also verify that a key present with `null` is not skipped.
+- **`Rule::when()` tests** — Cover `true`/`false` bool, closure returning `true`/`false`, pipe-string rules, array rules, nested `RuleInterface` objects, and `validate()` throws/passes accordingly.
 - **`#[UsesClass]` required** — PHPUnit is configured with `beStrictAboutCoverageMetadata=true`. Declare indirectly used classes with `#[UsesClass]`. Note: `RuleInterface` is an interface and is not a valid coverage target — do not add `#[UsesClass(RuleInterface::class)]`.
 
 ---
