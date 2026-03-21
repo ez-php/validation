@@ -23,6 +23,9 @@ use RuntimeException;
  *   required, string, integer, email, min:n, max:n, regex:/pattern/,
  *   unique:table,column, exists:table,column
  *
+ * Custom rules can be passed as RuleInterface instances in the rules array:
+ *   $v = Validator::make($data, ['field' => ['required', new MyCustomRule()]]);
+ *
  * Pass a Translator instance to receive localised error messages.
  * Without a Translator, English messages are used as fallback.
  *
@@ -36,8 +39,8 @@ final class Validator
     private bool $ran = false;
 
     /**
-     * @param array<string, mixed>               $data
-     * @param array<string, string|list<string>> $rules
+     * @param array<string, mixed>                               $data
+     * @param array<string, string|list<string|RuleInterface>>   $rules
      */
     private function __construct(
         private readonly array $data,
@@ -48,8 +51,8 @@ final class Validator
     }
 
     /**
-     * @param array<string, mixed>               $data
-     * @param array<string, string|list<string>> $rules
+     * @param array<string, mixed>                               $data
+     * @param array<string, string|list<string|RuleInterface>>   $rules
      */
     public static function make(
         array $data,
@@ -116,7 +119,11 @@ final class Validator
             $value = $this->data[$field] ?? null;
 
             foreach ($rules as $rule) {
-                $this->applyRule($field, $value, $rule);
+                if ($rule instanceof RuleInterface) {
+                    $this->applyCustomRule($field, $value, $rule);
+                } else {
+                    $this->applyRule($field, $value, $rule);
+                }
             }
         }
     }
@@ -146,6 +153,23 @@ final class Validator
             'exists' => $this->checkExists($field, $value, $param ?? ''),
             default => throw new RuntimeException("Unknown validation rule '$name' on field '$field'."),
         };
+    }
+
+    /**
+     * Apply a custom rule object. Calls RuleInterface::passes() and records the error on failure.
+     *
+     * @param string        $field
+     * @param mixed         $value
+     * @param RuleInterface $rule
+     *
+     * @return void
+     */
+    private function applyCustomRule(string $field, mixed $value, RuleInterface $rule): void
+    {
+        if (!$rule->passes($field, $value)) {
+            $message = str_replace(':field', $field, $rule->message());
+            $this->addError($field, $message);
+        }
     }
 
     /**

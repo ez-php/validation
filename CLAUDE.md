@@ -154,12 +154,14 @@ Rule-based input validation with optional database checks and i18n error message
 ```
 src/
 ├── Validator.php                — Rule-based validator; lazy execution; optional DB and Translator
+├── RuleInterface.php            — Interface for custom rule objects
 ├── ValidationException.php     — Thrown by validate(); carries field → messages error map
 └── ValidationServiceProvider.php — Binds a no-op Validator placeholder to the container
 
 tests/
 ├── TestCase.php                        — Base PHPUnit test case
-├── ValidatorTest.php                   — Covers all rules, fails/passes/errors/validate, DB rules, translator
+├── ValidatorTest.php                   — Covers all built-in rules, fails/passes/errors/validate, DB rules, translator
+├── CustomRuleTest.php                  — Covers RuleInterface integration (pass, fail, placeholder, mixed rules)
 └── ValidationExceptionTest.php         — Covers exception construction and errors() accessor
 ```
 
@@ -177,12 +179,14 @@ $v = Validator::make($data, $rules, db: $db);
 $v = Validator::make($data, $rules, db: $db, translator: $translator);
 ```
 
-**Rules** are passed as `array<string, string|list<string>>`. The pipe-separated string form is equivalent to an array:
+**Rules** are passed as `array<string, string|list<string|RuleInterface>>`. The pipe-separated string form is equivalent to an array of strings. Custom rule objects can only be used in the array form:
 
 ```php
-// equivalent:
+// string form (built-in rules only):
 ['email' => 'required|email', 'age' => 'integer|min:18']
-['email' => ['required', 'email'], 'age' => ['integer', 'min:18']]
+
+// array form (built-in rules and/or custom rule objects):
+['email' => ['required', 'email'], 'code' => ['required', new Uppercase()]]
 ```
 
 **Supported rules:**
@@ -218,6 +222,33 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 
 **DB rules (`unique`, `exists`)** — throw `RuntimeException` if called without a `Database` instance. The error is a programming mistake, not a validation failure.
 
+**Custom rules** — any object implementing `RuleInterface` can be passed in the array form. The Validator calls `passes($field, $value)` and, on failure, calls `message()` and replaces `:field` with the field name. Custom rules always run regardless of whether the value is absent or empty — implement that guard inside `passes()` if needed.
+
+---
+
+### RuleInterface (`src/RuleInterface.php`)
+
+Implement to define a custom validation rule:
+
+```php
+class Uppercase implements RuleInterface
+{
+    public function passes(string $field, mixed $value): bool
+    {
+        return is_string($value) && strtoupper($value) === $value;
+    }
+
+    public function message(): string
+    {
+        return 'The :field must be uppercase.';
+    }
+}
+
+$v = Validator::make($data, ['code' => ['required', new Uppercase()]]);
+```
+
+The `:field` placeholder in the message is replaced with the field name before the error is recorded.
+
 ---
 
 ### ValidationException (`src/ValidationException.php`)
@@ -246,7 +277,9 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **Optional `Database` and `Translator`** — Both are `null` by default. The validator is fully functional for simple rules without either. DB rules throw `RuntimeException` (programmer error) rather than silently skipping, so misconfiguration is caught immediately.
 - **`unique`/`exists` use raw SQL with backtick-quoted identifiers** — Table and column names come from the application's rule definitions, not from user input. If user-controlled values were ever used as table/column names, this would be a SQL injection risk. They must always be hardcoded in application code.
 - **`min`/`max` are type-aware** — String values use `mb_strlen` (multibyte safe); numeric values compare as `float`. A value that is both a string and numeric (e.g. `"42"`) will be treated as numeric by `is_numeric()`.
-- **Unknown rules are silently ignored** — The `match` in `applyRule()` has a `default => null` branch. This prevents exceptions on typos in rule names but also means misspelled rules produce no errors and no warnings. Be precise when writing rules.
+- **Unknown string rules throw `RuntimeException`** — The `match` in `applyRule()` has a `default => throw` branch. Misspelled built-in rule names are caught immediately at runtime.
+- **Custom `RuleInterface` objects always receive the raw value** — Unlike some built-in rules, custom rules are not skipped for absent/empty values. If a rule should be optional, guard against `null`/`''` inside `passes()`.
+- **Custom rule messages use `:field` replacement** — The same `:placeholder` pattern used by built-in messages. Only `:field` is substituted; custom rules cannot currently use other placeholders (e.g. `:min`). If needed, bake the values into the message string at construction time.
 - **Error messages use `:placeholder` syntax** — Consistent with the `ez-php/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
 - **`ValidationException` extends `EzPhpException`** — This ties the package to `ez-php/framework`. If standalone use is needed in the future, this dependency should be reconsidered.
 
@@ -259,7 +292,8 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **Translator tests** — Pass an inline anonymous-class `Translator` or a real `Translator` pointing at a `sys_get_temp_dir()` lang directory. Assert that error messages reflect the translated strings.
 - **Test absent-value skip behaviour** — Confirm that type rules (`string`, `email`, etc.) produce no errors when the field is absent or empty, and that `required` does.
 - **Test `validate()` throws** — Assert `ValidationException` is thrown, and that `$e->errors()` contains the expected field → messages structure.
-- **`#[UsesClass]` required** — PHPUnit is configured with `beStrictAboutCoverageMetadata=true`. Declare indirectly used classes with `#[UsesClass]`.
+- **Custom rule tests** — Use inline anonymous classes implementing `RuleInterface`. Test pass, fail, `:field` replacement, combination with built-in rules, and multiple custom rules on the same field.
+- **`#[UsesClass]` required** — PHPUnit is configured with `beStrictAboutCoverageMetadata=true`. Declare indirectly used classes with `#[UsesClass]`. Note: `RuleInterface` is an interface and is not a valid coverage target — do not add `#[UsesClass(RuleInterface::class)]`.
 
 ---
 
@@ -270,7 +304,7 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 | HTTP 422 response rendering | Application exception handler or base controller |
 | Form request objects (auto-validation on inject) | Application layer |
 | Sanitisation / data transformation | Application layer (validate first, then transform) |
-| Custom rule objects / interfaces | Future extension; currently rules are handled inline |
+| Bundled built-in rule classes (e.g. `Required`, `Email`) | Rules stay inline in `Validator`; only the interface lives here |
 | Nested array / wildcard validation (`items.*.name`) | Out of scope — add only when clearly needed |
 | File upload validation (size, mime type) | Application layer |
 | Cross-field rules (e.g. `confirmed`) | Out of scope for now |
