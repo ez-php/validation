@@ -498,11 +498,11 @@ final class Validator
             return;
         }
 
+        [$table, $column] = $this->parseTableColumn($param, $field);
+
         if ($this->db === null) {
             throw new RuntimeException("A database instance is required for the 'unique' rule on field '$field'.");
         }
-
-        [$table, $column] = $this->parseTableColumn($param, $field);
 
         $rows = $this->db->query("SELECT COUNT(*) AS cnt FROM `$table` WHERE `$column` = ?", [$value]);
 
@@ -522,11 +522,11 @@ final class Validator
             return;
         }
 
+        [$table, $column] = $this->parseTableColumn($param, $field);
+
         if ($this->db === null) {
             throw new RuntimeException("A database instance is required for the 'exists' rule on field '$field'.");
         }
-
-        [$table, $column] = $this->parseTableColumn($param, $field);
 
         $rows = $this->db->query("SELECT COUNT(*) AS cnt FROM `$table` WHERE `$column` = ?", [$value]);
 
@@ -712,12 +712,22 @@ final class Validator
 
     /**
      * @return array{string, string}
+     *
+     * @throws \RuntimeException if table or column name contains characters outside [a-zA-Z0-9_]
      */
     private function parseTableColumn(string $param, string $fallbackColumn): array
     {
         $parts = explode(',', $param, 2);
         $table = $parts[0];
         $column = $parts[1] ?? $fallbackColumn;
+
+        if (preg_match('/[^a-zA-Z0-9_]/', $table) === 1) {
+            throw new \RuntimeException("Invalid table name '$table': only [a-zA-Z0-9_] are allowed.");
+        }
+
+        if (preg_match('/[^a-zA-Z0-9_]/', $column) === 1) {
+            throw new \RuntimeException("Invalid column name '$column': only [a-zA-Z0-9_] are allowed.");
+        }
 
         return [$table, $column];
     }

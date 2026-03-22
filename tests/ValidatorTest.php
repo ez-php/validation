@@ -384,6 +384,48 @@ final class ValidatorTest extends TestCase
         Validator::make(['user_id' => '5'], ['user_id' => 'exists:users,id'])->fails();
     }
 
+    // --- SQL injection protection: invalid table/column names ---
+
+    /**
+     * @return void
+     */
+    public function testUniqueRuleThrowsOnInvalidTableName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid table name');
+        Validator::make(['email' => 'x@x.com'], ['email' => 'unique:users; DROP TABLE users--'])->fails();
+    }
+
+    /**
+     * @return void
+     */
+    public function testUniqueRuleThrowsOnInvalidColumnName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid column name');
+        Validator::make(['email' => 'x@x.com'], ['email' => 'unique:users,email`=`email'])->fails();
+    }
+
+    /**
+     * @return void
+     */
+    public function testExistsRuleThrowsOnInvalidTableName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid table name');
+        Validator::make(['id' => '1'], ['id' => 'exists:users OR 1=1--'])->fails();
+    }
+
+    /**
+     * @return void
+     */
+    public function testExistsRuleThrowsOnInvalidColumnName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid column name');
+        Validator::make(['id' => '1'], ['id' => 'exists:users,id OR 1=1'])->fails();
+    }
+
     // --- skipping rules for null/absent values ---
 
     /**
