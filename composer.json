@@ -25,7 +25,7 @@
   },
   "require-dev": {
     "ez-php/docker": "0.*",
-    "ez-php/testing": "0.*",
+    "ez-php/testing-application": "0.*",
     "ez-php/i18n": "0.*",
     "phpunit/phpunit": "^13.0",
     "phpstan/phpstan": "^2.1",
