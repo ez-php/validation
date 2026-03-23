@@ -56,6 +56,9 @@ $validator->validate(); // throws ValidationException
 | `regex:/pattern/` | Must match the given regex |
 | `unique:table,column` | Value must not exist in the given DB column |
 | `exists:table,column` | Value must exist in the given DB column |
+| `confirmed` | Value must match `{field}_confirmation` in the input |
+| `same:other` | Value must equal the value of `other` field |
+| `different:other` | Value must differ from the value of `other` field |
 
 ## With i18n
 

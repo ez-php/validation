@@ -437,6 +437,115 @@ final class ValidatorTest extends TestCase
         $this->assertTrue($v->passes());
     }
 
+    // --- confirmed ---
+
+    /**
+     * @return void
+     */
+    public function testConfirmedPassesWhenConfirmationMatches(): void
+    {
+        $v = Validator::make(
+            ['password' => 'secret', 'password_confirmation' => 'secret'],
+            ['password' => 'confirmed'],
+        );
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testConfirmedFailsWhenConfirmationMissing(): void
+    {
+        $v = Validator::make(['password' => 'secret'], ['password' => 'confirmed']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('password', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testConfirmedFailsWhenConfirmationDiffers(): void
+    {
+        $v = Validator::make(
+            ['password' => 'secret', 'password_confirmation' => 'other'],
+            ['password' => 'confirmed'],
+        );
+        $this->assertTrue($v->fails());
+    }
+
+    // --- same ---
+
+    /**
+     * @return void
+     */
+    public function testSamePassesWhenFieldsMatch(): void
+    {
+        $v = Validator::make(
+            ['email' => 'a@b.com', 'email_repeat' => 'a@b.com'],
+            ['email_repeat' => 'same:email'],
+        );
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testSameFailsWhenFieldsDiffer(): void
+    {
+        $v = Validator::make(
+            ['email' => 'a@b.com', 'email_repeat' => 'x@y.com'],
+            ['email_repeat' => 'same:email'],
+        );
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('email_repeat', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testSameFailsWhenOtherFieldMissing(): void
+    {
+        $v = Validator::make(['email_repeat' => 'a@b.com'], ['email_repeat' => 'same:email']);
+        $this->assertTrue($v->fails());
+    }
+
+    // --- different ---
+
+    /**
+     * @return void
+     */
+    public function testDifferentPassesWhenFieldsDiffer(): void
+    {
+        $v = Validator::make(
+            ['old_password' => 'old', 'new_password' => 'new'],
+            ['new_password' => 'different:old_password'],
+        );
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testDifferentFailsWhenFieldsMatch(): void
+    {
+        $v = Validator::make(
+            ['old_password' => 'same', 'new_password' => 'same'],
+            ['new_password' => 'different:old_password'],
+        );
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('new_password', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testDifferentPassesWhenOtherFieldMissing(): void
+    {
+        // other field missing → null, value is non-null → they differ
+        $v = Validator::make(['new_password' => 'secret'], ['new_password' => 'different:old_password']);
+        $this->assertTrue($v->passes());
+    }
+
     // --- unknown rule throws RuntimeException ---
 
     /**
