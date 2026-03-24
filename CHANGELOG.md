@@ -6,6 +6,7 @@ All notable changes to `ez-php/validation` are documented here.
 
 ### Documentation
 - Update CHANGELOG for v0.9.3 [skip ci] (bc33ea5)
+- Update CHANGELOG for v1.0.0 [skip ci] (a8edb5c)
 
 
 ## [v0.9.3] — 2026-03-24
