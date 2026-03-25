@@ -1,6 +1,6 @@
 {
   "name": "ez-php/validation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Validation module for the ez-php framework — rule-based validator with database-backed unique/exists rules and optional i18n support",
   "type": "library",
   "license": "MIT",
@@ -18,15 +18,15 @@
   },
   "require": {
     "php": "^8.5",
-    "ez-php/contracts": "*"
+    "ez-php/contracts": "^1.0"
   },
   "suggest": {
     "ez-php/i18n": "Required for localised validation error messages via Translator."
   },
   "require-dev": {
-    "ez-php/docker": "*",
-    "ez-php/testing-application": "*",
-    "ez-php/i18n": "*",
+    "ez-php/docker": "^1.0",
+    "ez-php/testing-application": "^1.0",
+    "ez-php/i18n": "^1.0",
     "phpunit/phpunit": "^13.0",
     "phpstan/phpstan": "^2.1",
     "friendsofphp/php-cs-fixer": "^3.94",
