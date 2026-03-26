@@ -23,7 +23,8 @@ use RuntimeException;
  *   required, string, integer, email, min:n, max:n, regex:/pattern/,
  *   unique:table,column, exists:table,column,
  *   confirmed, same:field, different:field,
- *   file, image, mimes:ext1,ext2, max_size:kb
+ *   date, date_format:Y-m-d, before:date, after:date,
+ *   file, image, mimes:ext1,ext2, max_size:kb, dimensions:min_width=N,...
  *
  * Conditional modifiers:
  *   sometimes — skip all rules for a field if it is absent from the data array
@@ -252,10 +253,15 @@ final class Validator
             'confirmed' => $this->checkConfirmed($field, $value),
             'same' => $this->checkSame($field, $value, $param ?? ''),
             'different' => $this->checkDifferent($field, $value, $param ?? ''),
+            'date' => $this->checkDate($field, $value),
+            'date_format' => $this->checkDateFormat($field, $value, $param ?? ''),
+            'before' => $this->checkBefore($field, $value, $param ?? ''),
+            'after' => $this->checkAfter($field, $value, $param ?? ''),
             'file' => $this->checkFile($field, $value),
             'image' => $this->checkImage($field, $value),
             'mimes' => $this->checkMimes($field, $value, $param ?? ''),
             'max_size' => $this->checkMaxSize($field, $value, (int) ($param ?? 0)),
+            'dimensions' => $this->checkDimensions($field, $value, $param ?? ''),
             default => throw new RuntimeException("Unknown validation rule '$name' on field '$field'."),
         };
     }
@@ -344,8 +350,13 @@ final class Validator
             'different' => 'The :field and :other must be different.',
             'file' => 'The :field must be a valid uploaded file.',
             'image' => 'The :field must be an image.',
+            'date' => 'The :field is not a valid date.',
+            'date_format' => 'The :field does not match the format :format.',
+            'before' => 'The :field must be a date before :date.',
+            'after' => 'The :field must be a date after :date.',
             'mimes' => 'The :field must be a file of type: :values.',
             'max_size' => 'The :field must not exceed :max kilobytes.',
+            'dimensions' => 'The :field has invalid image dimensions.',
             'min.string' => 'The :field field must be at least :min characters.',
             'min.numeric' => 'The :field field must be at least :min.',
             'max.string' => 'The :field field must not exceed :max characters.',
@@ -590,6 +601,115 @@ final class Validator
     }
 
     /**
+     * date — value must be a valid date parseable by strtotime().
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkDate(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value) || strtotime($value) === false) {
+            $this->addError($field, $this->translate('date', ['field' => $field]));
+        }
+    }
+
+    /**
+     * date_format:format — value must match the given PHP date format exactly.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $format PHP date format string, e.g. 'Y-m-d', 'd/m/Y H:i'.
+     *
+     * @return void
+     */
+    private function checkDateFormat(string $field, mixed $value, string $format): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, $this->translate('date_format', ['field' => $field, 'format' => $format]));
+
+            return;
+        }
+
+        $d = \DateTime::createFromFormat($format, $value);
+
+        if ($d === false || $d->format($format) !== $value) {
+            $this->addError($field, $this->translate('date_format', ['field' => $field, 'format' => $format]));
+        }
+    }
+
+    /**
+     * before:date — value must be a date strictly before the given reference date.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $date  Reference date string parseable by strtotime().
+     *
+     * @return void
+     */
+    private function checkBefore(string $field, mixed $value, string $date): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, $this->translate('before', ['field' => $field, 'date' => $date]));
+
+            return;
+        }
+
+        $valueTs   = strtotime($value);
+        $compareTs = strtotime($date);
+
+        if ($valueTs === false || $compareTs === false || $valueTs >= $compareTs) {
+            $this->addError($field, $this->translate('before', ['field' => $field, 'date' => $date]));
+        }
+    }
+
+    /**
+     * after:date — value must be a date strictly after the given reference date.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $date  Reference date string parseable by strtotime().
+     *
+     * @return void
+     */
+    private function checkAfter(string $field, mixed $value, string $date): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, $this->translate('after', ['field' => $field, 'date' => $date]));
+
+            return;
+        }
+
+        $valueTs   = strtotime($value);
+        $compareTs = strtotime($date);
+
+        if ($valueTs === false || $compareTs === false || $valueTs <= $compareTs) {
+            $this->addError($field, $this->translate('after', ['field' => $field, 'date' => $date]));
+        }
+    }
+
+    /**
      * file — value must be a valid $_FILES-style upload (error = UPLOAD_ERR_OK).
      * Skipped when value is null or empty string (combine with 'required' to enforce presence).
      *
@@ -691,6 +811,77 @@ final class Validator
 
         if ($size > $maxKb * 1024) {
             $this->addError($field, $this->translate('max_size', ['field' => $field, 'max' => $maxKb]));
+        }
+    }
+
+    /**
+     * dimensions:key=value,... — uploaded image must satisfy all given dimension constraints.
+     * Supported keys: width, height, min_width, max_width, min_height, max_height.
+     * Skipped when value is null/empty or not a valid upload.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $param Comma-separated constraints, e.g. 'min_width=100,max_height=200'.
+     *
+     * @return void
+     */
+    private function checkDimensions(string $field, mixed $value, string $param): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_array($value) || !$this->isValidUpload($value)) {
+            return;
+        }
+
+        $tmpName = is_string($value['tmp_name'] ?? null) ? (string) $value['tmp_name'] : '';
+        $size = @getimagesize($tmpName);
+
+        if ($size === false) {
+            $this->addError($field, $this->translate('dimensions', ['field' => $field]));
+
+            return;
+        }
+
+        [$imgWidth, $imgHeight] = $size;
+
+        $constraints = [];
+        foreach (explode(',', $param) as $pair) {
+            $kv = explode('=', $pair, 2);
+            if (count($kv) === 2) {
+                $constraints[trim($kv[0])] = (int) trim($kv[1]);
+            }
+        }
+
+        $valid = true;
+
+        if (isset($constraints['width']) && $imgWidth !== $constraints['width']) {
+            $valid = false;
+        }
+
+        if (isset($constraints['height']) && $imgHeight !== $constraints['height']) {
+            $valid = false;
+        }
+
+        if (isset($constraints['min_width']) && $imgWidth < $constraints['min_width']) {
+            $valid = false;
+        }
+
+        if (isset($constraints['max_width']) && $imgWidth > $constraints['max_width']) {
+            $valid = false;
+        }
+
+        if (isset($constraints['min_height']) && $imgHeight < $constraints['min_height']) {
+            $valid = false;
+        }
+
+        if (isset($constraints['max_height']) && $imgHeight > $constraints['max_height']) {
+            $valid = false;
+        }
+
+        if (!$valid) {
+            $this->addError($field, $this->translate('dimensions', ['field' => $field]));
         }
     }
 

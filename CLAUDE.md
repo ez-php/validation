@@ -218,6 +218,18 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `regex` | `regex:/pattern/` | Fails if string doesn't match pattern; skipped if absent or non-string |
 | `unique` | `unique:table` or `unique:table,column` | Fails if value already exists in DB; requires `Database` instance |
 | `exists` | `exists:table` or `exists:table,column` | Fails if value does not exist in DB; requires `Database` instance |
+| `confirmed` | `confirmed` | Fails unless `{field}_confirmation` in data equals the value |
+| `same` | `same:other` | Fails unless value equals the value of `other` field |
+| `different` | `different:other` | Fails if value equals the value of `other` field |
+| `date` | `date` | Fails if value is not a valid date parseable by `strtotime()`; skipped if absent |
+| `date_format` | `date_format:Y-m-d` | Fails if value does not match the given PHP date format exactly; skipped if absent |
+| `before` | `before:date` | Fails if value is not strictly before the reference date; skipped if absent |
+| `after` | `after:date` | Fails if value is not strictly after the reference date; skipped if absent |
+| `file` | `file` | Fails if value is not a valid `$_FILES` upload (`UPLOAD_ERR_OK`); skipped if absent |
+| `image` | `image` | Fails if upload MIME type is not `image/*`; skipped if absent |
+| `mimes` | `mimes:jpg,png` | Fails if upload file extension is not in the comma-separated list; skipped if absent |
+| `max_size` | `max_size:n` | Fails if upload size exceeds `n` kilobytes; skipped if absent or not a valid upload |
+| `dimensions` | `dimensions:min_width=N,...` | Fails if image dimensions violate constraints (`width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`); skipped if absent |
 | `sometimes` | `sometimes` | Field-level modifier: skip all rules for this field if its key is absent from the data array |
 
 **Rule parameter parsing:** `rule:param` splits on the first `:` only, so `regex:/foo:bar/` works correctly.
@@ -329,15 +341,22 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **Custom rule messages use `:field` replacement** — The same `:placeholder` pattern used by built-in messages. Only `:field` is substituted; custom rules cannot currently use other placeholders (e.g. `:min`). If needed, bake the values into the message string at construction time.
 - **Error messages use `:placeholder` syntax** — Consistent with the `ez-php/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
 - **`ValidationException` extends `EzPhpException`** — This ties the package to `ez-php/framework`. If standalone use is needed in the future, this dependency should be reconsidered.
+- **`date`/`before`/`after` use `strtotime()`** — Accepts any string parseable by PHP's `strtotime()`. The reference date in `before`/`after` is also parsed via `strtotime()`, so natural-language dates like `'tomorrow'` are valid.
+- **`date_format` uses strict matching** — `DateTime::createFromFormat()` is called and the result is re-formatted; both the parse and the round-trip must succeed. This rejects partial matches (e.g. `'2024-01'` against `'Y-m-d'`).
+- **`dimensions` uses `getimagesize()`** — The file must be a valid image readable by GD's `getimagesize()`. Binary validation is done against the actual uploaded file content, not the MIME type reported by the browser. If `getimagesize()` returns `false`, a dimensions error is recorded.
+- **File rules skip silently on absent/empty values** — `file`, `image`, `mimes`, `max_size`, `dimensions` all return early when value is `null`/`''`. Combine with `required` to enforce presence.
+- **Cross-field rules (`confirmed`, `same`, `different`) read from the top-level data array** — They do not support dot-notation references to nested fields.
+- **Nested field paths and wildcard expansion** — `'address.city'` resolves via dot notation; `'items.*.name'` expands to one path per array index. Both work with all rules.
 
 ---
 
 ## Testing Approach
 
-- **No external infrastructure for most rules** — `required`, `string`, `integer`, `email`, `min`, `max`, `regex` are fully testable in-process with no DB or translator.
+- **No external infrastructure for most rules** — `required`, `string`, `integer`, `email`, `min`, `max`, `regex`, `confirmed`, `same`, `different`, `date`, `date_format`, `before`, `after` are fully testable in-process with no DB or translator.
 - **DB rules require a live database** — `unique` and `exists` tests must use a real `Database` instance (via `DatabaseTestCase` from `ez-php/framework` tests, or a test-specific SQLite database). Do not mock the database for these rules.
+- **File upload rules use fake `$_FILES` arrays** — Construct `['tmp_name' => '/path', 'name' => 'foo.jpg', 'type' => 'image/jpeg', 'size' => 1024, 'error' => UPLOAD_ERR_OK]`. For `dimensions`, the `tmp_name` must point to a real image file (e.g. created with GD in `setUp`).
 - **Translator tests** — Pass an inline anonymous-class `Translator` or a real `Translator` pointing at a `sys_get_temp_dir()` lang directory. Assert that error messages reflect the translated strings.
-- **Test absent-value skip behaviour** — Confirm that type rules (`string`, `email`, etc.) produce no errors when the field is absent or empty, and that `required` does.
+- **Test absent-value skip behaviour** — Confirm that type rules (`string`, `email`, `date`, etc.) produce no errors when the field is absent or empty, and that `required` does.
 - **Test `validate()` throws** — Assert `ValidationException` is thrown, and that `$e->errors()` contains the expected field → messages structure.
 - **Custom rule tests** — Use inline anonymous classes implementing `RuleInterface`. Test pass, fail, `:field` replacement, combination with built-in rules, and multiple custom rules on the same field.
 - **`sometimes` tests** — Verify the key-absent skip (including when `required` would otherwise fail), key-present normal validation, and the pipe-string form. Also verify that a key present with `null` is not skipped.
@@ -354,6 +373,5 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 | Form request objects (auto-validation on inject) | Application layer |
 | Sanitisation / data transformation | Application layer (validate first, then transform) |
 | Bundled built-in rule classes (e.g. `Required`, `Email`) | Rules stay inline in `Validator`; only the interface lives here |
-| Nested array / wildcard validation (`items.*.name`) | Out of scope — add only when clearly needed |
-| File upload validation (size, mime type) | Application layer |
-| Cross-field rules (e.g. `confirmed`) | Out of scope for now |
+| File upload validation beyond MIME/extension/size/dimensions | Application layer |
+| Cross-field validation beyond `confirmed`/`same`/`different` | Application layer |
