@@ -671,7 +671,7 @@ final class Validator
             return;
         }
 
-        $valueTs   = strtotime($value);
+        $valueTs = strtotime($value);
         $compareTs = strtotime($date);
 
         if ($valueTs === false || $compareTs === false || $valueTs >= $compareTs) {
@@ -701,7 +701,7 @@ final class Validator
             return;
         }
 
-        $valueTs   = strtotime($value);
+        $valueTs = strtotime($value);
         $compareTs = strtotime($date);
 
         if ($valueTs === false || $compareTs === false || $valueTs <= $compareTs) {
