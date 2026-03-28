@@ -257,6 +257,8 @@ final class Validator
             'date_format' => $this->checkDateFormat($field, $value, $param ?? ''),
             'before' => $this->checkBefore($field, $value, $param ?? ''),
             'after' => $this->checkAfter($field, $value, $param ?? ''),
+            'before_or_equal' => $this->checkBeforeOrEqual($field, $value, $param ?? ''),
+            'after_or_equal' => $this->checkAfterOrEqual($field, $value, $param ?? ''),
             'file' => $this->checkFile($field, $value),
             'image' => $this->checkImage($field, $value),
             'mimes' => $this->checkMimes($field, $value, $param ?? ''),
@@ -354,6 +356,8 @@ final class Validator
             'date_format' => 'The :field does not match the format :format.',
             'before' => 'The :field must be a date before :date.',
             'after' => 'The :field must be a date after :date.',
+            'before_or_equal' => 'The :field must be a date before or equal to :date.',
+            'after_or_equal' => 'The :field must be a date after or equal to :date.',
             'mimes' => 'The :field must be a file of type: :values.',
             'max_size' => 'The :field must not exceed :max kilobytes.',
             'dimensions' => 'The :field has invalid image dimensions.',
@@ -650,12 +654,34 @@ final class Validator
     }
 
     /**
+     * Resolve a date reference for before/after comparisons.
+     *
+     * When $ref matches a field name in the current data array the field's
+     * string value is returned. Otherwise $ref is returned as-is so that
+     * literal date strings (e.g. 'tomorrow', '2026-01-01') continue to work.
+     *
+     * @param string $ref Field name or date string.
+     *
+     * @return string Resolved date string.
+     */
+    private function resolveDate(string $ref): string
+    {
+        if (array_key_exists($ref, $this->data)) {
+            $fieldValue = $this->data[$ref];
+            return is_string($fieldValue) ? $fieldValue : $ref;
+        }
+
+        return $ref;
+    }
+
+    /**
      * before:date — value must be a date strictly before the given reference date.
+     * The reference may be a field name in the current data or a date string.
      * Skipped when value is null or empty string.
      *
      * @param string $field
      * @param mixed  $value
-     * @param string $date  Reference date string parseable by strtotime().
+     * @param string $date  Field name or reference date string parseable by strtotime().
      *
      * @return void
      */
@@ -671,8 +697,9 @@ final class Validator
             return;
         }
 
+        $resolved = $this->resolveDate($date);
         $valueTs = strtotime($value);
-        $compareTs = strtotime($date);
+        $compareTs = strtotime($resolved);
 
         if ($valueTs === false || $compareTs === false || $valueTs >= $compareTs) {
             $this->addError($field, $this->translate('before', ['field' => $field, 'date' => $date]));
@@ -681,11 +708,12 @@ final class Validator
 
     /**
      * after:date — value must be a date strictly after the given reference date.
+     * The reference may be a field name in the current data or a date string.
      * Skipped when value is null or empty string.
      *
      * @param string $field
      * @param mixed  $value
-     * @param string $date  Reference date string parseable by strtotime().
+     * @param string $date  Field name or reference date string parseable by strtotime().
      *
      * @return void
      */
@@ -701,11 +729,76 @@ final class Validator
             return;
         }
 
+        $resolved = $this->resolveDate($date);
         $valueTs = strtotime($value);
-        $compareTs = strtotime($date);
+        $compareTs = strtotime($resolved);
 
         if ($valueTs === false || $compareTs === false || $valueTs <= $compareTs) {
             $this->addError($field, $this->translate('after', ['field' => $field, 'date' => $date]));
+        }
+    }
+
+    /**
+     * before_or_equal:date — value must be a date before or equal to the reference date.
+     * The reference may be a field name in the current data or a date string.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $date  Field name or reference date string parseable by strtotime().
+     *
+     * @return void
+     */
+    private function checkBeforeOrEqual(string $field, mixed $value, string $date): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, $this->translate('before_or_equal', ['field' => $field, 'date' => $date]));
+
+            return;
+        }
+
+        $resolved = $this->resolveDate($date);
+        $valueTs = strtotime($value);
+        $compareTs = strtotime($resolved);
+
+        if ($valueTs === false || $compareTs === false || $valueTs > $compareTs) {
+            $this->addError($field, $this->translate('before_or_equal', ['field' => $field, 'date' => $date]));
+        }
+    }
+
+    /**
+     * after_or_equal:date — value must be a date after or equal to the reference date.
+     * The reference may be a field name in the current data or a date string.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $date  Field name or reference date string parseable by strtotime().
+     *
+     * @return void
+     */
+    private function checkAfterOrEqual(string $field, mixed $value, string $date): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, $this->translate('after_or_equal', ['field' => $field, 'date' => $date]));
+
+            return;
+        }
+
+        $resolved = $this->resolveDate($date);
+        $valueTs = strtotime($value);
+        $compareTs = strtotime($resolved);
+
+        if ($valueTs === false || $compareTs === false || $valueTs < $compareTs) {
+            $this->addError($field, $this->translate('after_or_equal', ['field' => $field, 'date' => $date]));
         }
     }
 
