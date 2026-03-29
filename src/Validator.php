@@ -176,7 +176,12 @@ final class Validator
         $paths = [];
 
         foreach (array_keys($array) as $key) {
-            $paths[] = $prefix . '.' . $key . $suffix;
+            $expanded = $prefix . '.' . $key . $suffix;
+
+            // Recursively expand if the suffix still contains wildcards.
+            foreach ($this->resolveFieldPaths($expanded) as $resolved) {
+                $paths[] = $resolved;
+            }
         }
 
         return $paths;

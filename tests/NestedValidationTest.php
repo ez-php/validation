@@ -164,6 +164,65 @@ final class NestedValidationTest extends TestCase
     }
 
     // =========================================================================
+    // Multi-level wildcard (matrix.*.*)
+    // =========================================================================
+
+    public function test_multi_level_wildcard_passes_when_all_valid(): void
+    {
+        $v = Validator::make(
+            ['matrix' => [[1, 2], [3, 4]]],
+            ['matrix.*.*' => ['required', 'integer']],
+        );
+
+        self::assertTrue($v->passes());
+    }
+
+    public function test_multi_level_wildcard_fails_for_invalid_cell(): void
+    {
+        $v = Validator::make(
+            ['matrix' => [[1, 'bad'], [3, 4]]],
+            ['matrix.*.*' => ['integer']],
+        );
+
+        self::assertTrue($v->fails());
+        self::assertArrayHasKey('matrix.0.1', $v->errors());
+    }
+
+    public function test_multi_level_wildcard_collects_all_failing_cells(): void
+    {
+        $v = Validator::make(
+            ['matrix' => [['', ''], [3, '']]],
+            ['matrix.*.*' => ['required']],
+        );
+
+        self::assertTrue($v->fails());
+        self::assertArrayHasKey('matrix.0.0', $v->errors());
+        self::assertArrayHasKey('matrix.0.1', $v->errors());
+        self::assertArrayHasKey('matrix.1.1', $v->errors());
+    }
+
+    public function test_multi_level_wildcard_passes_with_empty_inner_arrays(): void
+    {
+        $v = Validator::make(
+            ['matrix' => [[], []]],
+            ['matrix.*.*' => ['required']],
+        );
+
+        // No items in inner arrays → no paths → passes
+        self::assertTrue($v->passes());
+    }
+
+    public function test_triple_level_wildcard(): void
+    {
+        $v = Validator::make(
+            ['a' => [[['x', 'y'], ['z']]]],
+            ['a.*.*.*' => ['required', 'string']],
+        );
+
+        self::assertTrue($v->passes());
+    }
+
+    // =========================================================================
     // Simple fields are unchanged
     // =========================================================================
 
