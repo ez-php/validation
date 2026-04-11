@@ -269,6 +269,10 @@ final class Validator
             'mimes' => $this->checkMimes($field, $value, $param ?? ''),
             'max_size' => $this->checkMaxSize($field, $value, (int) ($param ?? 0)),
             'dimensions' => $this->checkDimensions($field, $value, $param ?? ''),
+            'in' => $this->checkIn($field, $value, $param ?? ''),
+            'array' => $this->checkArray($field, $value),
+            'between' => $this->checkBetween($field, $value, $param ?? ''),
+            'nullable' => $this->checkNullable(),
             default => throw new RuntimeException("Unknown validation rule '$name' on field '$field'."),
         };
     }
@@ -370,6 +374,10 @@ final class Validator
             'min.numeric' => 'The :field field must be at least :min.',
             'max.string' => 'The :field field must not exceed :max characters.',
             'max.numeric' => 'The :field field must not exceed :max.',
+            'in' => 'The :field must be one of: :values.',
+            'array' => 'The :field must be an array.',
+            'between.string' => 'The :field must be between :min and :max characters.',
+            'between.numeric' => 'The :field must be between :min and :max.',
         ];
 
         $template = $templates[$key] ?? $key;
@@ -981,6 +989,100 @@ final class Validator
         if (!$valid) {
             $this->addError($field, $this->translate('dimensions', ['field' => $field]));
         }
+    }
+
+    /**
+     * in:value1,value2,... — value must be one of the comma-separated allowed values.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $param Comma-separated list of allowed values (e.g. 'foo,bar,baz').
+     *
+     * @return void
+     */
+    private function checkIn(string $field, mixed $value, string $param): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $allowed = array_map('trim', explode(',', $param));
+        $stringValue = is_scalar($value) ? (string) $value : '';
+
+        if (!in_array($stringValue, $allowed, true)) {
+            $this->addError($field, $this->translate('in', ['field' => $field, 'values' => $param]));
+        }
+    }
+
+    /**
+     * array — value must be a PHP array.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkArray(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_array($value)) {
+            $this->addError($field, $this->translate('array', ['field' => $field]));
+        }
+    }
+
+    /**
+     * between:min,max — value must be within the given range.
+     * String values: mb_strlen must be between min and max (inclusive).
+     * Numeric values: numeric comparison between min and max (inclusive).
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $param Comma-separated min and max (e.g. '3,10').
+     *
+     * @return void
+     */
+    private function checkBetween(string $field, mixed $value, string $param): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $parts = explode(',', $param, 2);
+        $min = (int) ($parts[0] ?? 0);
+        $max = (int) ($parts[1] ?? PHP_INT_MAX);
+
+        if (is_string($value) && !is_numeric($value)) {
+            $len = mb_strlen($value);
+
+            if ($len < $min || $len > $max) {
+                $this->addError($field, $this->translate('between.string', ['field' => $field, 'min' => $min, 'max' => $max]));
+            }
+        } elseif (is_numeric($value)) {
+            $floatVal = (float) $value;
+
+            if ($floatVal < (float) $min || $floatVal > (float) $max) {
+                $this->addError($field, $this->translate('between.numeric', ['field' => $field, 'min' => $min, 'max' => $max]));
+            }
+        }
+    }
+
+    /**
+     * nullable — declares that null is an acceptable value for this field.
+     * This is a no-op: all type rules already skip silently when the value is null or ''.
+     * The rule exists so that rule sets can explicitly document optionality and avoid
+     * a RuntimeException for the 'nullable' rule name.
+     *
+     * @return void
+     */
+    private function checkNullable(): void
+    {
+        // No-op: type rules already skip on null/empty string.
     }
 
     /**

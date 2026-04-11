@@ -571,6 +571,164 @@ final class ValidatorTest extends TestCase
         $this->assertCount(1, $v->errors()['name']);
     }
 
+    // --- in ---
+
+    /**
+     * @return void
+     */
+    public function testInPassesWhenValueIsInList(): void
+    {
+        $v = Validator::make(['role' => 'admin'], ['role' => 'in:admin,editor,viewer']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testInFailsWhenValueIsNotInList(): void
+    {
+        $v = Validator::make(['role' => 'superuser'], ['role' => 'in:admin,editor,viewer']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('role', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testInSkipsOnNull(): void
+    {
+        $v = Validator::make(['role' => null], ['role' => 'in:admin,editor']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testInSkipsOnEmptyString(): void
+    {
+        $v = Validator::make(['role' => ''], ['role' => 'in:admin,editor']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- array ---
+
+    /**
+     * @return void
+     */
+    public function testArrayPassesWhenValueIsArray(): void
+    {
+        $v = Validator::make(['tags' => ['php', 'oop']], ['tags' => 'array']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testArrayFailsWhenValueIsString(): void
+    {
+        $v = Validator::make(['tags' => 'php'], ['tags' => 'array']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('tags', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testArraySkipsOnNull(): void
+    {
+        $v = Validator::make(['tags' => null], ['tags' => 'array']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- between ---
+
+    /**
+     * @return void
+     */
+    public function testBetweenPassesForStringWithinLength(): void
+    {
+        $v = Validator::make(['name' => 'hello'], ['name' => 'between:3,10']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBetweenFailsForStringTooShort(): void
+    {
+        $v = Validator::make(['name' => 'hi'], ['name' => 'between:3,10']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('name', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBetweenFailsForStringTooLong(): void
+    {
+        $v = Validator::make(['name' => 'hello world!'], ['name' => 'between:3,10']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('name', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBetweenPassesForNumericInRange(): void
+    {
+        $v = Validator::make(['age' => 25], ['age' => 'between:18,65']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBetweenFailsForNumericBelowMin(): void
+    {
+        $v = Validator::make(['age' => 10], ['age' => 'between:18,65']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('age', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBetweenSkipsOnNull(): void
+    {
+        $v = Validator::make(['age' => null], ['age' => 'between:18,65']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- nullable ---
+
+    /**
+     * @return void
+     */
+    public function testNullableAllowsNullWithoutError(): void
+    {
+        $v = Validator::make(['bio' => null], ['bio' => 'nullable|string']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testNullableDoesNotCauseUnknownRuleException(): void
+    {
+        $v = Validator::make(['bio' => 'hello'], ['bio' => 'nullable|string']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testNullableWithRequiredStillFails(): void
+    {
+        $v = Validator::make(['bio' => null], ['bio' => 'nullable|required']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('bio', $v->errors());
+    }
+
     // --- with Translator ---
 
     public function testTranslatorIsUsedForMessages(): void
