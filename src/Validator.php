@@ -1054,8 +1054,8 @@ final class Validator
         }
 
         $parts = explode(',', $param, 2);
-        $min = (int) ($parts[0] ?? 0);
-        $max = (int) ($parts[1] ?? PHP_INT_MAX);
+        $min = (int) $parts[0];
+        $max = isset($parts[1]) ? (int) $parts[1] : PHP_INT_MAX;
 
         if (is_string($value) && !is_numeric($value)) {
             $len = mb_strlen($value);
