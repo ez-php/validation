@@ -1,6 +1,6 @@
 {
   "name": "ez-php/validation",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Validation module for the ez-php framework — rule-based validator with database-backed unique/exists rules and optional i18n support",
   "type": "library",
   "license": "MIT",
