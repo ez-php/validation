@@ -168,7 +168,9 @@ src/
 ├── RuleInterface.php            — Interface for custom rule objects
 ├── ConditionalRule.php          — Value object for Rule::when(); holds condition + nested rules
 ├── Rule.php                     — Static factory: Rule::when($condition, $rules)
-├── ValidationException.php     — Thrown by validate(); carries field → messages error map
+├── ValidationException.php      — Thrown by validate(); carries field → messages error map
+├── AuthorizationException.php   — Thrown by FormRequest when authorize() returns false
+├── FormRequest.php              — Auto-validating request value object; authorize() + rules() + validated()
 └── ValidationServiceProvider.php — Binds a no-op Validator placeholder to the container
 
 tests/
