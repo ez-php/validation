@@ -502,11 +502,13 @@ final class Validator
             return;
         }
 
-        $result = @preg_match($pattern, $value);
+        [$result, $warning] = $this->callSuppressingWarning(static fn (): int|false => preg_match($pattern, $value));
 
         if ($result === false) {
+            $detail = $warning !== null ? " ($warning)" : '';
+
             throw new RuntimeException(
-                "Invalid regex pattern '$pattern' for the 'regex' rule on field '$field'. "
+                "Invalid regex pattern '$pattern' for the 'regex' rule on field '$field'.$detail "
                 . 'Pattern must be a valid PCRE expression including delimiters, e.g. /^[A-Z]+$/.',
             );
         }
@@ -514,6 +516,39 @@ final class Validator
         if ($result === 0) {
             $this->addError($field, $this->translate('regex', ['field' => $field]));
         }
+    }
+
+    /**
+     * Run a callable that may trigger a PHP warning (e.g. an invalid preg_match()
+     * pattern or an unreadable getimagesize() file), capturing the warning message
+     * instead of silencing it with `@`. The caller inspects the return value to
+     * detect failure (e.g. `=== false`) and can surface the captured message in a
+     * clear validation-rule error rather than letting the raw PHP warning escape —
+     * which would otherwise fail the build under PHPUnit's failOnWarning setting.
+     *
+     * @template T
+     *
+     * @param callable(): T $fn
+     *
+     * @return array{0: T, 1: string|null} The callable's return value and the captured warning message, if any.
+     */
+    private function callSuppressingWarning(callable $fn): array
+    {
+        $warning = null;
+
+        set_error_handler(static function (int $errno, string $errstr) use (&$warning): bool {
+            $warning = $errstr;
+
+            return true;
+        }, E_WARNING);
+
+        try {
+            $result = $fn();
+        } finally {
+            restore_error_handler();
+        }
+
+        return [$result, $warning];
     }
 
     /**
@@ -942,7 +977,7 @@ final class Validator
         }
 
         $tmpName = is_string($value['tmp_name'] ?? null) ? (string) $value['tmp_name'] : '';
-        $size = @getimagesize($tmpName);
+        [$size] = $this->callSuppressingWarning(static fn (): array|false => getimagesize($tmpName));
 
         if ($size === false) {
             $this->addError($field, $this->translate('dimensions', ['field' => $field]));
