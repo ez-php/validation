@@ -323,6 +323,13 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `max_size` | `max_size:n` | Fails if upload size exceeds `n` kilobytes; skipped if absent or not a valid upload |
 | `dimensions` | `dimensions:min_width=N,...` | Fails if image dimensions violate constraints (`width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`); skipped if absent |
 | `sometimes` | `sometimes` | Field-level modifier: skip all rules for this field if its key is absent from the data array |
+| `boolean` | `boolean` | Fails unless value is `bool`, `0`/`1`, or `'0'`/`'1'`; skipped if absent |
+| `not_in` | `not_in:a,b,c` | Fails if value is one of the comma-separated values; skipped if absent |
+| `uuid` | `uuid` | Fails unless value matches the canonical 8-4-4-4-12 hex UUID format; skipped if absent |
+| `alpha` | `alpha` | Fails unless value is letters only (`\pL`, Unicode-aware); skipped if absent |
+| `alpha_num` | `alpha_num` | Fails unless value is letters and numbers only (`\pL\pN`); skipped if absent |
+| `alpha_dash` | `alpha_dash` | Fails unless value is letters, numbers, dashes, and underscores only; skipped if absent |
+| `distinct` | `distinct` | Fails if an array value contains duplicate elements (`SORT_REGULAR` comparison); skipped if absent or not an array |
 
 **Rule parameter parsing:** `rule:param` splits on the first `:` only, so `regex:/foo:bar/` works correctly.
 

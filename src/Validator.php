@@ -270,9 +270,16 @@ final class Validator
             'max_size' => $this->checkMaxSize($field, $value, (int) ($param ?? 0)),
             'dimensions' => $this->checkDimensions($field, $value, $param ?? ''),
             'in' => $this->checkIn($field, $value, $param ?? ''),
+            'not_in' => $this->checkNotIn($field, $value, $param ?? ''),
             'array' => $this->checkArray($field, $value),
             'between' => $this->checkBetween($field, $value, $param ?? ''),
             'nullable' => $this->checkNullable(),
+            'boolean' => $this->checkBoolean($field, $value),
+            'uuid' => $this->checkUuid($field, $value),
+            'alpha' => $this->checkAlpha($field, $value),
+            'alpha_num' => $this->checkAlphaNum($field, $value),
+            'alpha_dash' => $this->checkAlphaDash($field, $value),
+            'distinct' => $this->checkDistinct($field, $value),
             default => throw new RuntimeException("Unknown validation rule '$name' on field '$field'."),
         };
     }
@@ -375,9 +382,16 @@ final class Validator
             'max.string' => 'The :field field must not exceed :max characters.',
             'max.numeric' => 'The :field field must not exceed :max.',
             'in' => 'The :field must be one of: :values.',
+            'not_in' => 'The :field must not be one of: :values.',
             'array' => 'The :field must be an array.',
             'between.string' => 'The :field must be between :min and :max characters.',
             'between.numeric' => 'The :field must be between :min and :max.',
+            'boolean' => 'The :field field must be true or false.',
+            'uuid' => 'The :field must be a valid UUID.',
+            'alpha' => 'The :field field must only contain letters.',
+            'alpha_num' => 'The :field field must only contain letters and numbers.',
+            'alpha_dash' => 'The :field field must only contain letters, numbers, dashes, and underscores.',
+            'distinct' => 'The :field field has a duplicate value.',
         ];
 
         $template = $templates[$key] ?? $key;
@@ -1047,6 +1061,152 @@ final class Validator
 
         if (!in_array($stringValue, $allowed, true)) {
             $this->addError($field, $this->translate('in', ['field' => $field, 'values' => $param]));
+        }
+    }
+
+    /**
+     * not_in:value1,value2,... — value must NOT be one of the comma-separated values.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     * @param string $param Comma-separated list of disallowed values (e.g. 'admin,root').
+     *
+     * @return void
+     */
+    private function checkNotIn(string $field, mixed $value, string $param): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $disallowed = array_map('trim', explode(',', $param));
+        $stringValue = is_scalar($value) ? (string) $value : '';
+
+        if (in_array($stringValue, $disallowed, true)) {
+            $this->addError($field, $this->translate('not_in', ['field' => $field, 'values' => $param]));
+        }
+    }
+
+    /**
+     * boolean — value must be a bool or one of its common string/int representations
+     * (true, false, 1, 0, '1', '0'). Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkBoolean(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!in_array($value, [true, false, 0, 1, '0', '1'], true)) {
+            $this->addError($field, $this->translate('boolean', ['field' => $field]));
+        }
+    }
+
+    /**
+     * uuid — value must match the canonical 8-4-4-4-12 hex UUID format.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkUuid(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
+        if (!is_string($value) || preg_match($pattern, $value) !== 1) {
+            $this->addError($field, $this->translate('uuid', ['field' => $field]));
+        }
+    }
+
+    /**
+     * alpha — value must contain letters only (Unicode-aware via the 'u' modifier).
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkAlpha(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value) || preg_match('/^[\pL]+$/u', $value) !== 1) {
+            $this->addError($field, $this->translate('alpha', ['field' => $field]));
+        }
+    }
+
+    /**
+     * alpha_num — value must contain letters and numbers only.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkAlphaNum(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value) || preg_match('/^[\pL\pN]+$/u', $value) !== 1) {
+            $this->addError($field, $this->translate('alpha_num', ['field' => $field]));
+        }
+    }
+
+    /**
+     * alpha_dash — value must contain letters, numbers, dashes, and underscores only.
+     * Skipped when value is null or empty string.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkAlphaDash(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value) || preg_match('/^[\pL\pN_-]+$/u', $value) !== 1) {
+            $this->addError($field, $this->translate('alpha_dash', ['field' => $field]));
+        }
+    }
+
+    /**
+     * distinct — every element of an array value must be unique.
+     * Skipped when value is null, empty string, or not an array.
+     *
+     * @param string $field
+     * @param mixed  $value
+     *
+     * @return void
+     */
+    private function checkDistinct(string $field, mixed $value): void
+    {
+        if ($value === null || $value === '' || !is_array($value)) {
+            return;
+        }
+
+        if (count($value) !== count(array_unique($value, SORT_REGULAR))) {
+            $this->addError($field, $this->translate('distinct', ['field' => $field]));
         }
     }
 

@@ -729,6 +729,191 @@ final class ValidatorTest extends TestCase
         $this->assertArrayHasKey('bio', $v->errors());
     }
 
+    // --- boolean ---
+
+    /**
+     * @return void
+     */
+    public function testBooleanPassesForBoolAndAcceptedRepresentations(): void
+    {
+        foreach ([true, false, 0, 1, '0', '1'] as $value) {
+            $v = Validator::make(['active' => $value], ['active' => 'boolean']);
+            $this->assertTrue($v->passes(), 'value: ' . var_export($value, true));
+        }
+    }
+
+    /**
+     * @return void
+     */
+    public function testBooleanFailsForNonBooleanValue(): void
+    {
+        $v = Validator::make(['active' => 'yes'], ['active' => 'boolean']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('active', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testBooleanSkipsOnNull(): void
+    {
+        $v = Validator::make(['active' => null], ['active' => 'boolean']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- not_in ---
+
+    /**
+     * @return void
+     */
+    public function testNotInPassesWhenValueNotInList(): void
+    {
+        $v = Validator::make(['role' => 'user'], ['role' => 'not_in:admin,root']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testNotInFailsWhenValueInList(): void
+    {
+        $v = Validator::make(['role' => 'admin'], ['role' => 'not_in:admin,root']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('role', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testNotInSkipsOnNull(): void
+    {
+        $v = Validator::make(['role' => null], ['role' => 'not_in:admin,root']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- uuid ---
+
+    /**
+     * @return void
+     */
+    public function testUuidPassesForValidUuid(): void
+    {
+        $v = Validator::make(['id' => '3f2504e0-4f89-11d3-9a0c-0305e82c3301'], ['id' => 'uuid']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testUuidFailsForInvalidUuid(): void
+    {
+        $v = Validator::make(['id' => 'not-a-uuid'], ['id' => 'uuid']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('id', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testUuidSkipsOnNull(): void
+    {
+        $v = Validator::make(['id' => null], ['id' => 'uuid']);
+        $this->assertTrue($v->passes());
+    }
+
+    // --- alpha ---
+
+    /**
+     * @return void
+     */
+    public function testAlphaPassesForLettersOnly(): void
+    {
+        $v = Validator::make(['name' => 'Hello'], ['name' => 'alpha']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testAlphaFailsForDigitsOrSymbols(): void
+    {
+        $v = Validator::make(['name' => 'Hello123'], ['name' => 'alpha']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('name', $v->errors());
+    }
+
+    // --- alpha_num ---
+
+    /**
+     * @return void
+     */
+    public function testAlphaNumPassesForLettersAndDigits(): void
+    {
+        $v = Validator::make(['code' => 'Abc123'], ['code' => 'alpha_num']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testAlphaNumFailsForSymbols(): void
+    {
+        $v = Validator::make(['code' => 'Abc-123'], ['code' => 'alpha_num']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('code', $v->errors());
+    }
+
+    // --- alpha_dash ---
+
+    /**
+     * @return void
+     */
+    public function testAlphaDashPassesForLettersDigitsDashesUnderscores(): void
+    {
+        $v = Validator::make(['slug' => 'my-post_1'], ['slug' => 'alpha_dash']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testAlphaDashFailsForSpaces(): void
+    {
+        $v = Validator::make(['slug' => 'my post'], ['slug' => 'alpha_dash']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('slug', $v->errors());
+    }
+
+    // --- distinct ---
+
+    /**
+     * @return void
+     */
+    public function testDistinctPassesForUniqueArrayValues(): void
+    {
+        $v = Validator::make(['tags' => ['php', 'oop']], ['tags' => 'distinct']);
+        $this->assertTrue($v->passes());
+    }
+
+    /**
+     * @return void
+     */
+    public function testDistinctFailsForDuplicateArrayValues(): void
+    {
+        $v = Validator::make(['tags' => ['php', 'php']], ['tags' => 'distinct']);
+        $this->assertTrue($v->fails());
+        $this->assertArrayHasKey('tags', $v->errors());
+    }
+
+    /**
+     * @return void
+     */
+    public function testDistinctSkipsOnNull(): void
+    {
+        $v = Validator::make(['tags' => null], ['tags' => 'distinct']);
+        $this->assertTrue($v->passes());
+    }
+
     // --- with Translator ---
 
     public function testTranslatorIsUsedForMessages(): void

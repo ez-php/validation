@@ -25,4 +25,11 @@ return [
         'string' => 'Das Feld :field darf höchstens :max Zeichen lang sein.',
         'numeric' => 'Das Feld :field darf höchstens :max betragen.',
     ],
+    'boolean' => 'Das Feld :field muss wahr oder falsch sein.',
+    'not_in' => 'Der Wert für :field darf keiner der folgenden sein: :values.',
+    'uuid' => ':field muss eine gültige UUID sein.',
+    'alpha' => 'Das Feld :field darf nur Buchstaben enthalten.',
+    'alpha_num' => 'Das Feld :field darf nur Buchstaben und Zahlen enthalten.',
+    'alpha_dash' => 'Das Feld :field darf nur Buchstaben, Zahlen, Bindestriche und Unterstriche enthalten.',
+    'distinct' => 'Das Feld :field enthält einen doppelten Wert.',
 ];

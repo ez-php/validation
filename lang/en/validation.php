@@ -25,4 +25,11 @@ return [
         'string' => 'The :field field must not exceed :max characters.',
         'numeric' => 'The :field field must not exceed :max.',
     ],
+    'boolean' => 'The :field field must be true or false.',
+    'not_in' => 'The :field must not be one of: :values.',
+    'uuid' => 'The :field must be a valid UUID.',
+    'alpha' => 'The :field field must only contain letters.',
+    'alpha_num' => 'The :field field must only contain letters and numbers.',
+    'alpha_dash' => 'The :field field must only contain letters, numbers, dashes, and underscores.',
+    'distinct' => 'The :field field has a duplicate value.',
 ];

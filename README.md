@@ -69,6 +69,13 @@ $validator->validate(); // throws ValidationException
 | `max_size:n` | Upload size must not exceed `n` kilobytes |
 | `dimensions:min_width=N,...` | Image dimensions must satisfy the constraints |
 | `sometimes` | Skip all rules for this field when its key is absent from the data |
+| `boolean` | Must be `bool`, `0`/`1`, or `'0'`/`'1'` |
+| `not_in:a,b,c` | Value must NOT be one of the comma-separated values |
+| `uuid` | Must match the canonical 8-4-4-4-12 hex UUID format |
+| `alpha` | Must contain letters only (Unicode-aware) |
+| `alpha_num` | Must contain letters and numbers only |
+| `alpha_dash` | Must contain letters, numbers, dashes, and underscores only |
+| `distinct` | Every element of an array value must be unique |
 
 Rules skip silently for absent/empty values (except `required` and `sometimes`). Combine `required` with type rules to enforce both presence and type.
 
