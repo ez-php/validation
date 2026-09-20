@@ -175,8 +175,8 @@ Two things stay manual on purpose:
 - **`CLAUDE.md` part 1** — only the `# Package:` section is generated. Run
   `composer guidelines:sync` afterwards; baking a guidelines copy into the generator
   would recreate the drift the sync script exists to prevent.
-- **The host-port table below** (`--services` only) — editing it marks all ~40
-  `CLAUDE.md` copies as drifted at once, so the next `composer full` would fail for
+- **The host-port table below** (`--services` only) — editing it marks every
+  `CLAUDE.md` copy as drifted at once, so the next `composer full` would fail for
   a brand-new module. The generator prints which ports to claim instead.
 
 ### 4 — Docker scaffold
@@ -426,6 +426,7 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 
 ## Design Decisions and Constraints
 
+- **`mixed` for input values is intrinsic.** Validated data comes from request bodies, query strings and decoded JSON, so a field can be any scalar, array or `null`. Each `check*()` method narrows with `is_string`/`is_numeric`/`is_array` before use; the `mixed` in `Validator.php` marks exactly those untrusted-input boundaries and is not a type-safety shortcut.
 - **Private constructor, static `make()`** — A validator is meaningless without data and rules. The named constructor makes instantiation intent explicit and prevents partially constructed objects.
 - **Lazy execution, idempotent run** — Rules are applied once on first result access. Calling `fails()` then `errors()` does not run rules twice. This is important because some rules (DB queries) have side effects.
 - **Optional `Database` and `Translator`** — Both are `null` by default. The validator is fully functional for simple rules without either. DB rules throw `RuntimeException` (programmer error) rather than silently skipping, so misconfiguration is caught immediately.
