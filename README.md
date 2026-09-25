@@ -54,7 +54,7 @@ $validator->validate(); // throws ValidationException
 | `min:n` | Minimum value (numeric) or minimum length (string) |
 | `max:n` | Maximum value (numeric) or maximum length (string) |
 | `regex:/pattern/` | Must match the given regex |
-| `unique:table,column` | Value must not exist in the given DB column |
+| `unique:table,column` | Value must not exist in the given DB column (column defaults to the field name — its last segment for nested/wildcard fields, e.g. `items.*.email` → `email`) |
 | `exists:table,column` | Value must exist in the given DB column |
 | `confirmed` | Value must match `{field}_confirmation` in the input |
 | `same:other` | Value must equal the value of `other` field |

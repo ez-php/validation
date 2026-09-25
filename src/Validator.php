@@ -567,7 +567,7 @@ final class Validator
 
     /**
      * Rule format: unique:table  or  unique:table,column
-     * If column is omitted, the field name is used as the column.
+     * If column is omitted, the field name (its last segment for nested/wildcard fields) is used as the column.
      */
     private function checkUnique(string $field, mixed $value, string $param): void
     {
@@ -591,7 +591,7 @@ final class Validator
 
     /**
      * Rule format: exists:table  or  exists:table,column
-     * If column is omitted, the field name is used as the column.
+     * If column is omitted, the field name (its last segment for nested/wildcard fields) is used as the column.
      */
     private function checkExists(string $field, mixed $value, string $param): void
     {
@@ -1305,7 +1305,10 @@ final class Validator
     {
         $parts = explode(',', $param, 2);
         $table = $parts[0];
-        $column = $parts[1] ?? $fallbackColumn;
+        // Nested/wildcard fields (`items.*.email` → `items.0.email`) default to the last
+        // path segment (`email`), not the dotted field name, which is never a column.
+        $segments = explode('.', $fallbackColumn);
+        $column = $parts[1] ?? end($segments);
 
         if (preg_match('/[^a-zA-Z0-9_]/', $table) === 1) {
             throw new \RuntimeException("Invalid table name '$table': only [a-zA-Z0-9_] are allowed.");
