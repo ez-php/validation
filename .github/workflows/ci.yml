@@ -117,6 +117,9 @@ jobs:
         run: vendor/bin/phpstan analyse
         continue-on-error: ${{ matrix.experimental }}
 
+      - name: Run tests
+        run: vendor/bin/phpunit --no-coverage
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Auto-tag + changelog generation
   # ─────────────────────────────────────────────────────────────────────────────
