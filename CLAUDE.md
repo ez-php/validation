@@ -198,7 +198,7 @@ Run from the new module root (requires `"ez-php/docker": "^2.0"` in `require-dev
 vendor/bin/docker-init
 ```
 
-This copies `Dockerfile`, `docker-compose.yml`, `.env.example`, `start.sh`, and `docker/` into the module, replacing `{{MODULE_NAME}}` placeholders. Existing files are never overwritten.
+This copies `Dockerfile`, `docker-compose.yml`, `.env.example`, `start.sh`, and `docker/` into the module, replacing `{{MODULE_NAME}}` placeholders (`docker/db/`, the MySQL init script, only with `--services=mysql`). Existing files are never overwritten.
 
 Pass `--services` to merge MySQL/Redis/Meilisearch/Memcached/Mailpit service definitions directly into `docker-compose.yml` and uncomment the matching sections in `.env.example`, instead of adapting them by hand afterward:
 
@@ -243,7 +243,8 @@ After scaffolding:
 | `ez-php/feature-flags` | — | 6385 (`REDIS_HOST_PORT`) | — |
 | `ez-php/scheduler` | — | 6386 (`REDIS_HOST_PORT`) | — |
 | `ez-php/session` | — | 6387 (`REDIS_HOST_PORT`) | — |
-| **next free** | **3312** | **6388** | **7702** |
+| `ez-php/metrics` | — | 6388 (`REDIS_HOST_PORT`) | — |
+| **next free** | **3312** | **6389** | **7702** |
 
 Only set a port for services the module actually uses. Modules without external services need no port config.
 
@@ -284,8 +285,16 @@ tests/
 ├── TestCase.php                        — Base PHPUnit test case
 ├── ValidatorTest.php                   — Covers all built-in rules, fails/passes/errors/validate, DB rules, translator
 ├── CustomRuleTest.php                  — Covers RuleInterface integration (pass, fail, placeholder, mixed rules)
+├── ApplicationTestCase.php             — Bootstrapped Application base for the provider test
 ├── ConditionalRuleTest.php             — Covers 'sometimes' modifier and Rule::when() (bool + closure conditions)
-└── ValidationExceptionTest.php         — Covers exception construction and errors() accessor
+├── CrossFieldRuleTest.php              — confirmed / same / different
+├── DatabaseRuleColumnTest.php          — Column resolution of the database-backed unique / exists rules
+├── FileRuleTest.php                    — file / image / mimes / max_size / dimensions against real uploads
+├── FormRequestTest.php                 — FormRequest: authorize(), rules(), validated(), exceptions
+├── NestedValidationTest.php            — Dot-notation paths and `*` wildcard expansion
+├── ValidationExceptionTest.php         — Covers exception construction and errors() accessor
+└── Validation/
+    └── ValidationServiceProviderTest.php — Provider binds the Validator placeholder
 ```
 
 ---
@@ -324,6 +333,7 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `email` | `email` | Fails if value is present and not a valid email (uses `FILTER_VALIDATE_EMAIL`) |
 | `min` | `min:n` | String: fails if `mb_strlen < n`; numeric: fails if value `< n`; skipped if absent |
 | `max` | `max:n` | String: fails if `mb_strlen > n`; numeric: fails if value `> n`; skipped if absent |
+| `between` | `between:min,max` | String: fails unless `min <= mb_strlen <= max`; numeric: fails unless `min <= value <= max`; skipped if absent |
 | `regex` | `regex:/pattern/` | Fails if string doesn't match pattern; skipped if absent or non-string |
 | `unique` | `unique:table` or `unique:table,column` | Fails if value already exists in DB; requires `Database` instance |
 | `exists` | `exists:table` or `exists:table,column` | Fails if value does not exist in DB; requires `Database` instance |
@@ -334,6 +344,8 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `date_format` | `date_format:Y-m-d` | Fails if value does not match the given PHP date format exactly; skipped if absent |
 | `before` | `before:date` | Fails if value is not strictly before the reference date; skipped if absent |
 | `after` | `after:date` | Fails if value is not strictly after the reference date; skipped if absent |
+| `before_or_equal` | `before_or_equal:date` | Fails if value is after the reference date; skipped if absent |
+| `after_or_equal` | `after_or_equal:date` | Fails if value is before the reference date; skipped if absent |
 | `file` | `file` | Fails if value is not a valid `$_FILES` upload (`UPLOAD_ERR_OK`); skipped if absent |
 | `image` | `image` | Fails if upload MIME type is not `image/*`; skipped if absent |
 | `mimes` | `mimes:jpg,png` | Fails if upload file extension is not in the comma-separated list; skipped if absent |
@@ -341,12 +353,15 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `dimensions` | `dimensions:min_width=N,...` | Fails if image dimensions violate constraints (`width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`); skipped if absent |
 | `sometimes` | `sometimes` | Field-level modifier: skip all rules for this field if its key is absent from the data array |
 | `boolean` | `boolean` | Fails unless value is `bool`, `0`/`1`, or `'0'`/`'1'`; skipped if absent |
+| `in` | `in:a,b,c` | Fails unless the value (as a string) is one of the comma-separated values; skipped if absent |
 | `not_in` | `not_in:a,b,c` | Fails if value is one of the comma-separated values; skipped if absent |
 | `uuid` | `uuid` | Fails unless value matches the canonical 8-4-4-4-12 hex UUID format; skipped if absent |
 | `alpha` | `alpha` | Fails unless value is letters only (`\pL`, Unicode-aware); skipped if absent |
 | `alpha_num` | `alpha_num` | Fails unless value is letters and numbers only (`\pL\pN`); skipped if absent |
 | `alpha_dash` | `alpha_dash` | Fails unless value is letters, numbers, dashes, and underscores only; skipped if absent |
 | `distinct` | `distinct` | Fails if an array value contains duplicate elements (`SORT_REGULAR` comparison); skipped if absent or not an array |
+| `array` | `array` | Fails if value is present and not an array |
+| `nullable` | `nullable` | Declarative no-op, accepted so rule sets ported from other frameworks don't throw. It does not make other rules skip `null`/`''`: most built-in rules already do, but `required`, `confirmed` (fails on `''`), `same` (fails on `null`/`''` unless the other field matches) and custom rules still evaluate |
 
 **Rule parameter parsing:** `rule:param` splits on the first `:` only, so `regex:/foo:bar/` works correctly.
 
@@ -363,7 +378,7 @@ $v = Validator::make($data, $rules, db: $db, translator: $translator);
 | `errors()` | `array<string, list<string>>` | Field → list of error messages |
 | `validate()` | `void` | Throws `ValidationException` on failure |
 
-**Error messages** — resolved via `Translator::get("validation.$key", $replacements)` if a `Translator` is provided. Without one, English fallback templates are used (defined inline in `fallbackMessage()`).
+**Error messages** — resolved via `Translator::get("validation.$key", $replacements)` if a `Translator` is provided. Without one — or when the translator returns the key itself because the locale lacks it — English fallback templates are used (defined inline in `fallbackMessage()`), so a user never sees `validation.<rule>`. The template's `lang/<locale>/validation.php` files define every key `fallbackMessage()` knows, for all 8 shipped locales.
 
 **DB rules (`unique`, `exists`)** — throw `RuntimeException` if called without a `Database` instance. The error is a programming mistake, not a validation failure.
 
@@ -457,8 +472,8 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **Custom `RuleInterface` objects always receive the raw value** — Unlike some built-in rules, custom rules are not skipped for absent/empty values. If a rule should be optional, guard against `null`/`''` inside `passes()`.
 - **Custom rule messages use `:field` replacement** — The same `:placeholder` pattern used by built-in messages. Only `:field` is substituted; custom rules cannot currently use other placeholders (e.g. `:min`). If needed, bake the values into the message string at construction time.
 - **Error messages use `:placeholder` syntax** — Consistent with the `ez-php/i18n` `Translator`. When adding new rules, define both a `validation.<key>` translation key and a fallback template in `fallbackMessage()`.
-- **`ValidationException` extends `EzPhpException`** — This ties the package to `ez-php/framework`. If standalone use is needed in the future, this dependency should be reconsidered.
-- **`date`/`before`/`after` use `strtotime()`** — Accepts any string parseable by PHP's `strtotime()`. The reference date in `before`/`after` is also parsed via `strtotime()`, so natural-language dates like `'tomorrow'` are valid.
+- **`ValidationException` extends `EzPhp\Contracts\EzPhpException`** — The package's only ez-php runtime dependency is `ez-php/contracts` (`EzPhpException`, `DatabaseInterface`, `TranslatorInterface`); it does not depend on `ez-php/framework` and works standalone.
+- **`date`/`before`/`after` use `strtotime()`** — Accepts any string parseable by PHP's `strtotime()`. The reference date in `before`/`after`/`before_or_equal`/`after_or_equal` is the value of the field with that name when one exists in the data, otherwise the string itself, parsed via `strtotime()`, so natural-language dates like `'tomorrow'` are valid.
 - **`date_format` uses strict matching** — `DateTime::createFromFormat()` is called and the result is re-formatted; both the parse and the round-trip must succeed. This rejects partial matches (e.g. `'2024-01'` against `'Y-m-d'`).
 - **`dimensions` uses `getimagesize()`** — The file must be a valid image readable by GD's `getimagesize()`. Binary validation is done against the actual uploaded file content, not the MIME type reported by the browser. If `getimagesize()` returns `false`, a dimensions error is recorded.
 - **File rules skip silently on absent/empty values** — `file`, `image`, `mimes`, `max_size`, `dimensions` all return early when value is `null`/`''`. Combine with `required` to enforce presence.
@@ -489,7 +504,6 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 | Concern | Where it belongs |
 |---|---|
 | HTTP 422 response rendering | Application exception handler or base controller |
-| Form request objects (auto-validation on inject) | Application layer |
 | Sanitisation / data transformation | Application layer (validate first, then transform) |
 | Bundled built-in rule classes (e.g. `Required`, `Email`) | Rules stay inline in `Validator`; only the interface lives here |
 | File upload validation beyond MIME/extension/size/dimensions | Application layer |

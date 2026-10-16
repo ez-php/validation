@@ -53,6 +53,7 @@ $validator->validate(); // throws ValidationException
 | `email` | Must be a valid email address |
 | `min:n` | Minimum value (numeric) or minimum length (string) |
 | `max:n` | Maximum value (numeric) or maximum length (string) |
+| `between:min,max` | Value (numeric) or length (string) must lie between `min` and `max`, inclusive |
 | `regex:/pattern/` | Must match the given regex |
 | `unique:table,column` | Value must not exist in the given DB column (column defaults to the field name — its last segment for nested/wildcard fields, e.g. `items.*.email` → `email`) |
 | `exists:table,column` | Value must exist in the given DB column |
@@ -61,8 +62,10 @@ $validator->validate(); // throws ValidationException
 | `different:other` | Value must differ from the value of `other` field |
 | `date` | Must be a valid date parseable by `strtotime()` |
 | `date_format:Y-m-d` | Must exactly match the given PHP date format |
-| `before:date` | Must be a date strictly before the reference |
+| `before:date` | Must be a date strictly before the reference (a date string, or another field's name) |
 | `after:date` | Must be a date strictly after the reference |
+| `before_or_equal:date` | Must be a date before or equal to the reference |
+| `after_or_equal:date` | Must be a date after or equal to the reference |
 | `file` | Must be a valid `$_FILES` upload (`UPLOAD_ERR_OK`) |
 | `image` | Upload MIME type must be `image/*` |
 | `mimes:jpg,png` | Upload file extension must be in the list |
@@ -70,12 +73,15 @@ $validator->validate(); // throws ValidationException
 | `dimensions:min_width=N,...` | Image dimensions must satisfy the constraints |
 | `sometimes` | Skip all rules for this field when its key is absent from the data |
 | `boolean` | Must be `bool`, `0`/`1`, or `'0'`/`'1'` |
+| `in:a,b,c` | Value must be one of the comma-separated values (compared as strings) |
 | `not_in:a,b,c` | Value must NOT be one of the comma-separated values |
 | `uuid` | Must match the canonical 8-4-4-4-12 hex UUID format |
 | `alpha` | Must contain letters only (Unicode-aware) |
 | `alpha_num` | Must contain letters and numbers only |
 | `alpha_dash` | Must contain letters, numbers, dashes, and underscores only |
 | `distinct` | Every element of an array value must be unique |
+| `array` | Must be an array |
+| `nullable` | Accepted for compatibility but a no-op: it does not make other rules skip `null`/`''`. Most built-in rules already skip empty values; `required`, `confirmed`, `same` and custom rules do not |
 
 Rules skip silently for absent/empty values (except `required` and `sometimes`). Combine `required` with type rules to enforce both presence and type.
 
@@ -124,6 +130,11 @@ $translator = $app->make(\EzPhp\I18n\Translator::class);
 
 $validator = Validator::make($data, $rules, translator: $translator);
 ```
+
+Messages are looked up as `validation.<rule>` (`validation.min.string`, `validation.between.numeric`
+for the length/value variants). A key the translator does not have falls back to the built-in
+English message instead of showing the raw key. The application template ships all keys for
+`de`, `en`, `es`, `fr`, `it`, `nl`, `pl` and `pt` in `lang/<locale>/validation.php`.
 
 ## License
 

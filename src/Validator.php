@@ -342,7 +342,13 @@ final class Validator
     private function translate(string $key, array $replacements): string
     {
         if ($this->translator !== null) {
-            return $this->translator->get("validation.$key", $replacements);
+            $message = $this->translator->get("validation.$key", $replacements);
+
+            // A translator returns the key itself for a missing entry; fall back to the
+            // English template rather than showing "validation.<rule>" to the user.
+            if ($message !== "validation.$key") {
+                return $message;
+            }
         }
 
         return $this->fallbackMessage($key, $replacements);

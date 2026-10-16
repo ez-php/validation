@@ -935,4 +935,36 @@ final class ValidatorTest extends TestCase
         rmdir($langPath . '/de');
         rmdir($langPath);
     }
+
+    /**
+     * A translator without the rule's key returns the key itself; the English
+     * fallback must be used instead of showing "validation.confirmed" to the user.
+     */
+    public function testMissingTranslationFallsBackToTheEnglishMessage(): void
+    {
+        $langPath = sys_get_temp_dir() . '/ez-php-i18n-' . uniqid();
+        mkdir($langPath . '/de', 0o755, true);
+        file_put_contents(
+            $langPath . '/de/validation.php',
+            "<?php\nreturn ['required' => 'Das Feld :field ist erforderlich.'];\n",
+        );
+
+        $translator = new Translator('de', 'de', $langPath);
+        $v = Validator::make(
+            ['password' => 'secret', 'password_confirmation' => 'other', 'name' => 'ab'],
+            ['password' => 'confirmed', 'name' => 'min:3'],
+            null,
+            $translator,
+        );
+
+        try {
+            $this->assertTrue($v->fails());
+            $this->assertSame('The password confirmation does not match.', $v->errors()['password'][0]);
+            $this->assertSame('The name field must be at least 3 characters.', $v->errors()['name'][0]);
+        } finally {
+            unlink($langPath . '/de/validation.php');
+            rmdir($langPath . '/de');
+            rmdir($langPath);
+        }
+    }
 }
