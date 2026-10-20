@@ -138,11 +138,11 @@ final class Validator
 
                 foreach ($rules as $rule) {
                     if ($rule instanceof ConditionalRule) {
-                        $this->applyConditionalRule($field, $value, $rule);
+                        $this->applyConditionalRule($field, $value, $rule, $fieldPattern);
                     } elseif ($rule instanceof RuleInterface) {
                         $this->applyCustomRule($field, $value, $rule);
                     } elseif ($rule !== 'sometimes') {
-                        $this->applyRule($field, $value, $rule);
+                        $this->applyRule($field, $value, $rule, $fieldPattern);
                     }
                 }
             }
@@ -233,13 +233,14 @@ final class Validator
     }
 
     /**
-     * @param string $field
+     * @param string $field   concrete field path (`items.0.email`)
      * @param mixed  $value
      * @param string $rule
+     * @param string $pattern the rule-definition pattern the path was expanded from (`items.*.email`)
      *
      * @return void
      */
-    private function applyRule(string $field, mixed $value, string $rule): void
+    private function applyRule(string $field, mixed $value, string $rule, string $pattern): void
     {
         $parts = explode(':', $rule, 2);
         $name = $parts[0];
@@ -253,8 +254,8 @@ final class Validator
             'min' => $this->checkMin($field, $value, (int) ($param ?? 0)),
             'max' => $this->checkMax($field, $value, (int) ($param ?? PHP_INT_MAX)),
             'regex' => $this->checkRegex($field, $value, $param ?? ''),
-            'unique' => $this->checkUnique($field, $value, $param ?? ''),
-            'exists' => $this->checkExists($field, $value, $param ?? ''),
+            'unique' => $this->checkUnique($field, $value, $param ?? '', $pattern),
+            'exists' => $this->checkExists($field, $value, $param ?? '', $pattern),
             'confirmed' => $this->checkConfirmed($field, $value),
             'same' => $this->checkSame($field, $value, $param ?? ''),
             'different' => $this->checkDifferent($field, $value, $param ?? ''),
@@ -307,10 +308,11 @@ final class Validator
      * @param string          $field
      * @param mixed           $value
      * @param ConditionalRule $rule
+     * @param string          $pattern the rule-definition pattern the field was expanded from
      *
      * @return void
      */
-    private function applyConditionalRule(string $field, mixed $value, ConditionalRule $rule): void
+    private function applyConditionalRule(string $field, mixed $value, ConditionalRule $rule, string $pattern): void
     {
         if (!$rule->isActive()) {
             return;
@@ -320,7 +322,7 @@ final class Validator
             if ($nested instanceof RuleInterface) {
                 $this->applyCustomRule($field, $value, $nested);
             } else {
-                $this->applyRule($field, $value, $nested);
+                $this->applyRule($field, $value, $nested, $pattern);
             }
         }
     }
@@ -573,15 +575,15 @@ final class Validator
 
     /**
      * Rule format: unique:table  or  unique:table,column
-     * If column is omitted, the field name (its last segment for nested/wildcard fields) is used as the column.
+     * If column is omitted, the last segment of the field *pattern* is used as the column.
      */
-    private function checkUnique(string $field, mixed $value, string $param): void
+    private function checkUnique(string $field, mixed $value, string $param, string $pattern): void
     {
         if ($value === null || $value === '') {
             return;
         }
 
-        [$table, $column] = $this->parseTableColumn($param, $field);
+        [$table, $column] = $this->parseTableColumn($param, $pattern);
 
         if ($this->db === null) {
             throw new RuntimeException("A database instance is required for the 'unique' rule on field '$field'.");
@@ -597,15 +599,15 @@ final class Validator
 
     /**
      * Rule format: exists:table  or  exists:table,column
-     * If column is omitted, the field name (its last segment for nested/wildcard fields) is used as the column.
+     * If column is omitted, the last segment of the field *pattern* is used as the column.
      */
-    private function checkExists(string $field, mixed $value, string $param): void
+    private function checkExists(string $field, mixed $value, string $param, string $pattern): void
     {
         if ($value === null || $value === '') {
             return;
         }
 
-        [$table, $column] = $this->parseTableColumn($param, $field);
+        [$table, $column] = $this->parseTableColumn($param, $pattern);
 
         if ($this->db === null) {
             throw new RuntimeException("A database instance is required for the 'exists' rule on field '$field'.");
@@ -1303,18 +1305,29 @@ final class Validator
     }
 
     /**
+     * The fallback column is derived from the rule *pattern* (`items.*.email` → `email`),
+     * never from the expanded path: for a wildcard field the expanded segment is a
+     * client-supplied array key (`0`, or any key of an associative body), which would
+     * let the request choose the queried column.
+     *
      * @return array{string, string}
      *
-     * @throws \RuntimeException if table or column name contains characters outside [a-zA-Z0-9_]
+     * @throws \RuntimeException if table or column name contains characters outside [a-zA-Z0-9_],
+     *                           or the pattern ends in `*` and the rule names no column
      */
-    private function parseTableColumn(string $param, string $fallbackColumn): array
+    private function parseTableColumn(string $param, string $pattern): array
     {
         $parts = explode(',', $param, 2);
         $table = $parts[0];
-        // Nested/wildcard fields (`items.*.email` → `items.0.email`) default to the last
-        // path segment (`email`), not the dotted field name, which is never a column.
-        $segments = explode('.', $fallbackColumn);
+        $segments = explode('.', $pattern);
         $column = $parts[1] ?? end($segments);
+
+        if ($column === '*') {
+            throw new \RuntimeException(
+                "Rule on wildcard field '$pattern' needs an explicit column (e.g. 'exists:$table,name'): "
+                . 'the last segment is a client-supplied array key.',
+            );
+        }
 
         if (preg_match('/[^a-zA-Z0-9_]/', $table) === 1) {
             throw new \RuntimeException("Invalid table name '$table': only [a-zA-Z0-9_] are allowed.");
