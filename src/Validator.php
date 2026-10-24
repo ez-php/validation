@@ -1312,7 +1312,7 @@ final class Validator
      *
      * @return array{string, string}
      *
-     * @throws \RuntimeException if table or column name contains characters outside [a-zA-Z0-9_],
+     * @throws \RuntimeException if table or column name is empty or contains characters outside [a-zA-Z0-9_],
      *                           or the pattern ends in `*` and the rule names no column
      */
     private function parseTableColumn(string $param, string $pattern): array
@@ -1329,12 +1329,12 @@ final class Validator
             );
         }
 
-        if (preg_match('/[^a-zA-Z0-9_]/', $table) === 1) {
-            throw new \RuntimeException("Invalid table name '$table': only [a-zA-Z0-9_] are allowed.");
+        if (preg_match('/^[a-zA-Z0-9_]+$/', $table) !== 1) {
+            throw new \RuntimeException("Invalid table name '$table': must be non-empty and use only [a-zA-Z0-9_].");
         }
 
-        if (preg_match('/[^a-zA-Z0-9_]/', $column) === 1) {
-            throw new \RuntimeException("Invalid column name '$column': only [a-zA-Z0-9_] are allowed.");
+        if (preg_match('/^[a-zA-Z0-9_]+$/', $column) !== 1) {
+            throw new \RuntimeException("Invalid column name '$column': must be non-empty and use only [a-zA-Z0-9_].");
         }
 
         return [$table, $column];

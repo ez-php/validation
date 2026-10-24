@@ -426,6 +426,36 @@ final class ValidatorTest extends TestCase
         Validator::make(['id' => '1'], ['id' => 'exists:users,id OR 1=1'])->fails();
     }
 
+    /**
+     * @return void
+     */
+    public function testUniqueRuleThrowsOnEmptyTableName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Invalid table name ''");
+        Validator::make(['email' => 'x@x.com'], ['email' => 'unique:'])->fails();
+    }
+
+    /**
+     * @return void
+     */
+    public function testExistsRuleThrowsOnEmptyTableAndColumnName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Invalid table name ''");
+        Validator::make(['id' => '1'], ['id' => 'exists:,'])->fails();
+    }
+
+    /**
+     * @return void
+     */
+    public function testExistsRuleThrowsOnEmptyColumnName(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Invalid column name ''");
+        Validator::make(['id' => '1'], ['id' => 'exists:users,'])->fails();
+    }
+
     // --- skipping rules for null/absent values ---
 
     /**
