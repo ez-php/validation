@@ -151,7 +151,7 @@ php make_module.php <name> --description="..." --services=mysql,redis --extensio
 
 `<name>` is the kebab-case package name; the namespace is derived as
 `EzPhp\<PascalCase>` (each `-`-separated word upper-cased) unless `--namespace=`
-overrides it. Existing exceptions the guess gets wrong: `asyncapi` → `AsyncApi`,
+overrides it. Existing exceptions the guess gets wrong: `asyncapi` → `AsyncApi`, `asyncapi-ui` → `AsyncApiUi`,
 `bignum` → `BigNum`, `dataloader` → `DataLoader`, `dotenv` → `Env`, `graphql` → `GraphQL`, `graphql-subscriptions` → `GraphQLSubscriptions`, `oauth` → `OAuth`,
 `opcache` → `OPCache`, `openapi` → `OpenApi`, `qrcode` → `QrCode`, `swagger-ui` → `SwaggerUI`, `webauthn` → `WebAuthn` and
 `websocket` → `WebSocket`; `websocket-client` → `WebsocketClient`, `websocket-tls` → `WebsocketTls`,
@@ -481,8 +481,6 @@ Binds `Validator::class` to a no-op placeholder (`Validator::make([], [])`). Thi
 - **File rules skip silently on absent/empty values** — `file`, `image`, `mimes`, `max_size`, `dimensions` all return early when value is `null`/`''`. Combine with `required` to enforce presence.
 - **Cross-field rules (`confirmed`, `same`, `different`) read from the top-level data array** — They do not support dot-notation references to nested fields.
 - **Nested field paths and wildcard expansion** — `'address.city'` resolves via dot notation; `'items.*.name'` expands to one path per array index. Both work with all rules.
-
----
 - **`Validator` (~1300 lines) is deliberately kept as one class.** Roughly two thirds of it is the rule set: one small `checkX()` method per built-in rule, each sharing `addError()`/`translate()` and the nested-path value lookup. Moving them into per-rule classes would only add a rule-context object that hands those same three things back, and would turn the rule name → method dispatch in `applyRule()` into a registry. The extension point for new rules already exists (`RuleInterface`, `ConditionalRule`), so new rules do not have to grow this file. Revisit if the built-in rule count doubles; the natural cut then is a `Rules\` namespace with `RuleInterface` implementations behind the existing string names.
 
 
